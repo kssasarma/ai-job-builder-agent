@@ -1,0 +1,14 @@
+/app/src/main/java/com/resumeai/ResumeAiApplication.java
+/app/src/main/java/com/resumeai/auth/User.java
+/app/src/main/java/com/resumeai/candidate/CandidateProfile.java
+/app/src/main/java/com/resumeai/candidate/Resume.java
+/app/src/main/java/com/resumeai/candidate/TailoringHistory.java
+/app/src/main/java/com/resumeai/common/ErrorResponse.java
+/app/src/main/java/com/resumeai/common/GlobalExceptionHandler.java
+/app/src/main/java/com/resumeai/common/HealthController.java
+/app/src/main/java/com/resumeai/common/Role.java
+/app/src/main/java/com/resumeai/config/SecurityConfig.java
+/app/src/main/java/com/resumeai/config/WebConfig.java
+/app/src/main/java/com/resumeai/recruiter/CandidateMatch.java
+/app/src/main/java/com/resumeai/recruiter/JobPosting.java
+/app/src/main/java/com/resumeai/recruiter/RecruiterProfile.java
