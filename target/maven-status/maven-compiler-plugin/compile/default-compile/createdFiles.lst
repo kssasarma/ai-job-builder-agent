@@ -1,0 +1,15 @@
+com/resumeai/ResumeAiApplication.class
+com/resumeai/candidate/CandidateProfile.class
+com/resumeai/common/Role.class
+com/resumeai/candidate/Resume.class
+com/resumeai/config/WebConfig.class
+com/resumeai/recruiter/RecruiterProfile.class
+com/resumeai/common/GlobalExceptionHandler.class
+com/resumeai/config/SecurityConfig.class
+com/resumeai/recruiter/CandidateMatch.class
+com/resumeai/auth/User.class
+com/resumeai/candidate/TailoringHistory.class
+com/resumeai/common/ErrorResponse.class
+com/resumeai/recruiter/JobPosting.class
+com/resumeai/common/HealthController.class
+com/resumeai/config/WebConfig$1.class
