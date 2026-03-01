@@ -28,14 +28,14 @@ public class TailoringHistory {
     private String compatibilityTier; // GREEN, AMBER, RED
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "compatibility_analysis", columnDefinition = "jsonb")
+    @Column(name = "compatibility_analysis", columnDefinition = "JSONB")
     private String compatibilityAnalysis;
 
     @Column(name = "tailored_content", columnDefinition = "TEXT")
     private String tailoredContent;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "changes_made", columnDefinition = "jsonb")
+    @Column(name = "changes_made", columnDefinition = "JSONB")
     private String changesMade;
 
     @Column(name = "created_at")

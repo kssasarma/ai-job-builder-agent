@@ -30,6 +30,9 @@ public class JobPosting {
 
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "required_skills", columnDefinition = "text[]")
+    @ElementCollection
+    @CollectionTable(name = "job_posting_skills", joinColumns = @JoinColumn(name = "job_posting_id"))
+    @Column(name = "skill")
     private List<String> requiredSkills;
 
     @Column(name = "experience_min")

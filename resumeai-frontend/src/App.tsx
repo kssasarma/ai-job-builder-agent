@@ -29,6 +29,10 @@ const PrivateRoute = ({ children, role }: { children: React.ReactElement; role?:
 
   return children;
 };
+// Placeholder components
+const Login = () => <div className="p-8">Login Page</div>;
+const CandidateDashboard = () => <div className="p-8">Candidate Dashboard</div>;
+const RecruiterDashboard = () => <div className="p-8">Recruiter Dashboard</div>;
 
 function App() {
   return (
@@ -57,6 +61,9 @@ function App() {
               </PrivateRoute>
             }
           />
+          <Route path="/login" element={<Login />} />
+          <Route path="/candidate/*" element={<CandidateDashboard />} />
+          <Route path="/recruiter/*" element={<RecruiterDashboard />} />
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
         <Toaster />
