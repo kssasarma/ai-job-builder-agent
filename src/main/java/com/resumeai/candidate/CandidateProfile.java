@@ -33,9 +33,6 @@ public class CandidateProfile {
 
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "skills", columnDefinition = "text[]")
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "candidate_skills", joinColumns = @JoinColumn(name = "candidate_id"))
-    @Column(name = "skill")
     private List<String> skills;
 
     @Column(name = "created_at")

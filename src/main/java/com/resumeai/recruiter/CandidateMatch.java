@@ -36,14 +36,6 @@ public class CandidateMatch {
 
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "identified_gaps", columnDefinition = "text[]")
-    @ElementCollection
-    @CollectionTable(name = "match_matching_skills", joinColumns = @JoinColumn(name = "match_id"))
-    @Column(name = "skill")
-    private List<String> matchingSkills;
-
-    @ElementCollection
-    @CollectionTable(name = "match_identified_gaps", joinColumns = @JoinColumn(name = "match_id"))
-    @Column(name = "gap")
     private List<String> identifiedGaps;
 
     @Column(name = "created_at")

@@ -5,8 +5,6 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import java.util.UUID;
 import java.util.LocalDateTime;
-import java.util.UUID;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "resumes")
@@ -30,7 +28,7 @@ public class Resume {
     private Integer atsScore;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "score_breakdown", columnDefinition = "JSONB")
+    @Column(name = "score_breakdown", columnDefinition = "jsonb")
     private String scoreBreakdown; // Storing as JSON string for now
 
     @Column(name = "is_primary")
