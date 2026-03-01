@@ -34,6 +34,12 @@ public class ResumeController {
         }
     }
 
+    @GetMapping("/{id}/profile-extraction/status")
+    public ResponseEntity<?> getProfileExtractionStatus(@PathVariable UUID id) {
+        String status = aiService.getProfileExtractionStatus(id);
+        return ResponseEntity.ok(Map.of("status", status));
+    }
+
     @PostMapping("/upload")
     public ResponseEntity<?> uploadResume(
             @RequestParam("file") MultipartFile file,

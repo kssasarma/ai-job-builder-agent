@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import java.util.UUID;
-import java.util.LocalDateTime;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "resumes")

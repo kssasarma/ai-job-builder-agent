@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16
+    image: postgres:15.17-alpine3.23
     container_name: resumeai-db
     environment:
       POSTGRES_DB: resumeai

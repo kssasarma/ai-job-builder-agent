@@ -22,6 +22,7 @@ public class ResumeService {
 
     private final ResumeRepository resumeRepository;
     private final CandidateProfileRepository candidateProfileRepository;
+    private final com.resumeai.ai.AiService aiService;
 
     @Value("${app.upload.dir:uploads/resumes}")
     private String uploadDir;
@@ -36,9 +37,11 @@ public class ResumeService {
         return resumeRepository.findByCandidateId(candidateId);
     }
 
-    public ResumeService(ResumeRepository resumeRepository, CandidateProfileRepository candidateProfileRepository) {
+    public ResumeService(ResumeRepository resumeRepository, CandidateProfileRepository candidateProfileRepository,
+                         com.resumeai.ai.AiService aiService) {
         this.resumeRepository = resumeRepository;
         this.candidateProfileRepository = candidateProfileRepository;
+        this.aiService = aiService;
     }
 
     @Transactional
@@ -79,7 +82,7 @@ public class ResumeService {
         }
 
         Resume resume = new Resume();
-        resume.setId(resumeId);
+        // resume.setId(resumeId);
         resume.setCandidate(candidate);
         resume.setFilePath(filePath.toString());
         resume.setExtractedText(extractedText);
@@ -88,6 +91,18 @@ public class ResumeService {
         resumeRepository.save(resume);
 
         String preview = extractedText.length() > 500 ? extractedText.substring(0, 500) : extractedText;
+        
+        // Trigger async profile extraction after transaction commits
+        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+            new org.springframework.transaction.support.TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    aiService.extractProfileAsync(resume.getId());
+                }
+            }
+        );
+
+        // Return the ID from the saved database record
         return new ResumeUploadResponse(resume.getId(), preview);
     }
 

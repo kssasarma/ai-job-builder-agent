@@ -10,6 +10,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 @Configuration
 public class ApplicationConfig {
 
@@ -17,6 +19,12 @@ public class ApplicationConfig {
 
     public ApplicationConfig(UserDetailsService userDetailsService) {
         this.userDetailsService = userDetailsService;
+    }
+
+    // Add this bean definition
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
     }
 
     @Bean
