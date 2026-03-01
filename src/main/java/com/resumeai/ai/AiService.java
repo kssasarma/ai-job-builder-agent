@@ -39,20 +39,27 @@ public class AiService {
     @Value("classpath:/prompts/candidate-matching.st")
     private Resource candidateMatchingPromptTemplate;
 
+    @Value("classpath:/prompts/profile-extraction.st")
+    private Resource profileExtractionPromptTemplate;
+
     // In-memory status map for simplicity (UUID -> Status String)
     private final Map<UUID, String> scoringStatusMap = new ConcurrentHashMap<>();
     private final Map<UUID, String> matchingStatusMap = new ConcurrentHashMap<>();
+    private final Map<UUID, String> profileExtractionStatusMap = new ConcurrentHashMap<>();
 
     private final com.resumeai.candidate.TailoringHistoryRepository tailoringHistoryRepository;
     private final com.resumeai.recruiter.JobPostingRepository jobPostingRepository;
     private final com.resumeai.candidate.CandidateProfileRepository candidateProfileRepository;
     private final com.resumeai.recruiter.CandidateMatchRepository candidateMatchRepository;
+    private final com.resumeai.candidate.ProfileSuggestionRepository profileSuggestionRepository;
+    private AiService self;
 
     public AiService(ChatClient.Builder chatClientBuilder, ResumeRepository resumeRepository, ObjectMapper objectMapper,
                      com.resumeai.candidate.TailoringHistoryRepository tailoringHistoryRepository,
                      com.resumeai.recruiter.JobPostingRepository jobPostingRepository,
                      com.resumeai.candidate.CandidateProfileRepository candidateProfileRepository,
-                     com.resumeai.recruiter.CandidateMatchRepository candidateMatchRepository) {
+                     com.resumeai.recruiter.CandidateMatchRepository candidateMatchRepository,
+                     com.resumeai.candidate.ProfileSuggestionRepository profileSuggestionRepository) {
         this.chatClient = chatClientBuilder.build();
         this.resumeRepository = resumeRepository;
         this.objectMapper = objectMapper;
@@ -60,13 +67,82 @@ public class AiService {
         this.jobPostingRepository = jobPostingRepository;
         this.candidateProfileRepository = candidateProfileRepository;
         this.candidateMatchRepository = candidateMatchRepository;
+        this.profileSuggestionRepository = profileSuggestionRepository;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setSelf(@org.springframework.context.annotation.Lazy AiService self) {
+        this.self = self;
+    }
+
+    @Async
+    public void extractProfileAsync(UUID resumeId) {
+        profileExtractionStatusMap.put(resumeId, "PROCESSING");
+        try {
+            self.doExtractProfileWithRetry(resumeId);
+            profileExtractionStatusMap.put(resumeId, "COMPLETED");
+        } catch (Exception e) {
+            profileExtractionStatusMap.put(resumeId, "FAILED: " + e.getMessage());
+        }
+    }
+
+    public String getProfileExtractionStatus(UUID resumeId) {
+        return profileExtractionStatusMap.getOrDefault(resumeId, "UNKNOWN");
+    }
+
+    @Transactional
+    @Retryable(maxAttempts = 3, backoff = @Backoff(delay = 1000, multiplier = 2))
+    public void doExtractProfileWithRetry(UUID resumeId) throws Exception {
+        Resume resume = resumeRepository.findById(resumeId)
+                .orElseThrow(() -> new IllegalArgumentException("Resume not found"));
+
+        if (resume.getExtractedText() == null || resume.getExtractedText().isBlank()) {
+            throw new IllegalStateException("Resume has no extracted text to analyze");
+        }
+
+        com.resumeai.candidate.ProfileExtractionResponse response = chatClient.prompt()
+                .system(s -> s.text(profileExtractionPromptTemplate).param("resume", resume.getExtractedText()))
+                .call()
+                .entity(com.resumeai.candidate.ProfileExtractionResponse.class);
+
+        com.resumeai.candidate.CandidateProfile profile = resume.getCandidate();
+        boolean profileUpdated = false;
+
+        if ((profile.getHeadline() == null || profile.getHeadline().isBlank()) && response.suggestedHeadline() != null) {
+            profile.setHeadline(response.suggestedHeadline());
+            profileUpdated = true;
+        }
+        if ((profile.getLinkedinUrl() == null || profile.getLinkedinUrl().isBlank()) && response.linkedinUrl() != null) {
+            profile.setLinkedinUrl(response.linkedinUrl());
+            profileUpdated = true;
+        }
+        if ((profile.getSkills() == null || profile.getSkills().isEmpty()) && response.skills() != null && !response.skills().isEmpty()) {
+            profile.setSkills(response.skills());
+            profileUpdated = true;
+        }
+
+        if (profileUpdated) {
+            candidateProfileRepository.save(profile);
+        }
+
+        com.resumeai.candidate.ProfileSuggestion suggestion = profileSuggestionRepository.findByResumeId(resumeId)
+                .orElse(new com.resumeai.candidate.ProfileSuggestion());
+
+        suggestion.setResume(resume);
+        suggestion.setCandidate(profile);
+        suggestion.setSuggestedHeadline(response.suggestedHeadline());
+        suggestion.setSuggestedSkills(response.skills());
+        suggestion.setSuggestedLinkedinUrl(response.linkedinUrl());
+        suggestion.setStatus("PENDING");
+
+        profileSuggestionRepository.save(suggestion);
     }
 
     @Async
     public void scoreResumeAsync(UUID resumeId) {
         scoringStatusMap.put(resumeId, "PROCESSING");
         try {
-            doScoreResumeWithRetry(resumeId);
+            self.doScoreResumeWithRetry(resumeId);
             scoringStatusMap.put(resumeId, "COMPLETED");
         } catch (Exception e) {
             scoringStatusMap.put(resumeId, "FAILED: " + e.getMessage());
@@ -188,7 +264,7 @@ public class AiService {
     public void matchCandidatesAsync(UUID jobPostingId) {
         matchingStatusMap.put(jobPostingId, "PROCESSING");
         try {
-            doMatchCandidatesWithRetry(jobPostingId);
+            self.doMatchCandidatesWithRetry(jobPostingId);
             matchingStatusMap.put(jobPostingId, "COMPLETED");
         } catch (Exception e) {
             matchingStatusMap.put(jobPostingId, "FAILED: " + e.getMessage());
