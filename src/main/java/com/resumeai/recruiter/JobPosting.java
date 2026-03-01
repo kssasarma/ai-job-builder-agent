@@ -1,6 +1,8 @@
 package com.resumeai.recruiter;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.util.UUID;
 import java.util.List;
 import java.time.LocalDateTime;
@@ -26,9 +28,8 @@ public class JobPosting {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
 
-    @ElementCollection
-    @CollectionTable(name = "job_posting_skills", joinColumns = @JoinColumn(name = "job_posting_id"))
-    @Column(name = "skill")
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "required_skills", columnDefinition = "text[]")
     private List<String> requiredSkills;
 
     @Column(name = "experience_min")

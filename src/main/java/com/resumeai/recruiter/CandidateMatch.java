@@ -2,6 +2,8 @@ package com.resumeai.recruiter;
 
 import com.resumeai.candidate.CandidateProfile;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.util.UUID;
 import java.util.List;
 import java.time.LocalDateTime;
@@ -28,14 +30,12 @@ public class CandidateMatch {
     @Column(name = "match_reasoning", columnDefinition = "TEXT")
     private String matchReasoning;
 
-    @ElementCollection
-    @CollectionTable(name = "match_matching_skills", joinColumns = @JoinColumn(name = "match_id"))
-    @Column(name = "skill")
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "matching_skills", columnDefinition = "text[]")
     private List<String> matchingSkills;
 
-    @ElementCollection
-    @CollectionTable(name = "match_identified_gaps", joinColumns = @JoinColumn(name = "match_id"))
-    @Column(name = "gap")
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "identified_gaps", columnDefinition = "text[]")
     private List<String> identifiedGaps;
 
     @Column(name = "created_at")

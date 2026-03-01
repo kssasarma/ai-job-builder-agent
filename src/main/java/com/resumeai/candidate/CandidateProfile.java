@@ -2,6 +2,8 @@ package com.resumeai.candidate;
 
 import com.resumeai.auth.User;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.util.UUID;
 import java.util.List;
 import java.time.LocalDateTime;
@@ -29,9 +31,8 @@ public class CandidateProfile {
     @Column(name = "open_to_opportunities")
     private Boolean openToOpportunities = false;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "candidate_skills", joinColumns = @JoinColumn(name = "candidate_id"))
-    @Column(name = "skill")
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "skills", columnDefinition = "text[]")
     private List<String> skills;
 
     @Column(name = "created_at")

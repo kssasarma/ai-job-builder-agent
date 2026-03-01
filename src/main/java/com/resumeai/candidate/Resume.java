@@ -1,8 +1,10 @@
 package com.resumeai.candidate;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.util.UUID;
-import java.time.LocalDateTime;
+import java.util.LocalDateTime;
 
 @Entity
 @Table(name = "resumes")
@@ -25,7 +27,8 @@ public class Resume {
     @Column(name = "ats_score")
     private Integer atsScore;
 
-    @Column(name = "score_breakdown", columnDefinition = "JSONB")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "score_breakdown", columnDefinition = "jsonb")
     private String scoreBreakdown; // Storing as JSON string for now
 
     @Column(name = "is_primary")

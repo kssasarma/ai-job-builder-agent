@@ -1,6 +1,8 @@
 package com.resumeai.candidate;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.util.UUID;
 import java.time.LocalDateTime;
 
@@ -25,13 +27,15 @@ public class TailoringHistory {
     @Column(name = "compatibility_tier")
     private String compatibilityTier; // GREEN, AMBER, RED
 
-    @Column(name = "compatibility_analysis", columnDefinition = "JSONB")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "compatibility_analysis", columnDefinition = "jsonb")
     private String compatibilityAnalysis;
 
     @Column(name = "tailored_content", columnDefinition = "TEXT")
     private String tailoredContent;
 
-    @Column(name = "changes_made", columnDefinition = "JSONB")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "changes_made", columnDefinition = "jsonb")
     private String changesMade;
 
     @Column(name = "created_at")

@@ -20,3 +20,8 @@ spring:
           google:
             client-id: test-client-id
             client-secret: test-client-secret
+
+app:
+  jwt:
+    secret: verysecretkeythatshouldbechangedinproductionwithatleast32characters
+    expiration: 86400000
