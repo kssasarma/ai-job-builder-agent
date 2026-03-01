@@ -79,7 +79,7 @@ public class ResumeService {
         }
 
         Resume resume = new Resume();
-        resume.setId(resumeId);
+        // resume.setId(resumeId);
         resume.setCandidate(candidate);
         resume.setFilePath(filePath.toString());
         resume.setExtractedText(extractedText);
@@ -88,6 +88,8 @@ public class ResumeService {
         resumeRepository.save(resume);
 
         String preview = extractedText.length() > 500 ? extractedText.substring(0, 500) : extractedText;
+        
+        // Return the ID from the saved database record
         return new ResumeUploadResponse(resume.getId(), preview);
     }
 
