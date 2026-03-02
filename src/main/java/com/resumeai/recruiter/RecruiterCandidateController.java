@@ -45,6 +45,7 @@ public class RecruiterCandidateController {
 
             return new CandidateDto(
                     profile.getId(),
+                    profile.getUser() != null ? profile.getUser().getName() : null,
                     profile.getHeadline(),
                     profile.getSkills(),
                     profile.getLinkedinUrl(),
@@ -67,6 +68,7 @@ public class RecruiterCandidateController {
 
         CandidateDto dto = new CandidateDto(
                 profile.getId(),
+                profile.getUser() != null ? profile.getUser().getName() : null,
                 profile.getHeadline(),
                 profile.getSkills(),
                 profile.getLinkedinUrl(),

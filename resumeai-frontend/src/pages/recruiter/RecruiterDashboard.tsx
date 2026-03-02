@@ -219,7 +219,7 @@ export default function RecruiterDashboard() {
                           <div className="p-6 flex-1">
                             <div className="flex justify-between items-start mb-2">
                               <div>
-                                <h4 className="text-lg font-bold">Candidate {match.candidate.id.substring(0,8)}</h4>
+                                <h4 className="text-lg font-bold">{match.candidate.name || `Candidate ${match.candidate.id.substring(0,8)}`}</h4>
                                 <p className="text-sm text-muted-foreground">{match.candidate.headline || "Professional"}</p>
                               </div>
                               <div className="flex gap-2">

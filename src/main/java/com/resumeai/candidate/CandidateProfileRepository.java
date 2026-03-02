@@ -30,6 +30,7 @@ public interface CandidateProfileRepository extends JpaRepository<CandidateProfi
             :minAtsScore IS NULL OR
             (SELECT max(r.ats_score) FROM resumes r WHERE r.candidate_id = c.id) >= :minAtsScore
         )
+        ORDER BY c.created_at DESC
         """,
         countQuery = """
         SELECT count(*) FROM candidate_profiles c

@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 
 public record CandidateProfileDto(
         UUID id,
+        String name,
         String headline,
         String linkedinUrl,
         String preferredContactEmail,
@@ -18,6 +19,7 @@ public record CandidateProfileDto(
         if (entity == null) return null;
         return new CandidateProfileDto(
                 entity.getId(),
+                entity.getUser() != null ? entity.getUser().getName() : null,
                 entity.getHeadline(),
                 entity.getLinkedinUrl(),
                 entity.getPreferredContactEmail(),

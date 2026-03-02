@@ -5,6 +5,7 @@ import java.util.UUID;
 
 public record CandidateDto(
         UUID candidateId,
+        String name,
         String headline,
         List<String> skills,
         String linkedinUrl,

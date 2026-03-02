@@ -182,6 +182,16 @@ public class AiService {
         resume.setAtsScore(response.overallScore());
         resume.setScoreBreakdown(objectMapper.writeValueAsString(response));
         resumeRepository.save(resume);
+
+        // Save detected skills to candidate profile if skills are empty (first time ATS scoring)
+        if (response.detectedSkills() != null && !response.detectedSkills().isEmpty()) {
+            com.resumeai.candidate.CandidateProfile profile = candidateProfileRepository.findById(resume.getCandidate().getId())
+                    .orElse(null);
+            if (profile != null && (profile.getSkills() == null || profile.getSkills().isEmpty())) {
+                profile.setSkills(response.detectedSkills());
+                candidateProfileRepository.save(profile);
+            }
+        }
     }
 
     public String getScoringStatus(UUID resumeId) {

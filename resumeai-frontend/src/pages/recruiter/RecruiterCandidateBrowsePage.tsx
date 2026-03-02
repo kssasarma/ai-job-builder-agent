@@ -13,7 +13,7 @@ export default function RecruiterCandidateBrowsePage() {
   useEffect(() => {
     const fetchCandidates = async () => {
       try {
-        const res = await apiClient.get("/recruiter/candidates?size=50&sort=createdAt,desc");
+        const res = await apiClient.get("/recruiter/candidates?size=50");
         setCandidates(res.data.content || []);
       } catch (error) {
         toast.error("Failed to load candidates.");
@@ -44,7 +44,7 @@ export default function RecruiterCandidateBrowsePage() {
               <CardHeader className="pb-3 border-b border-border/40 bg-muted/20">
                 <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle className="text-xl">Candidate {candidate.candidateId.substring(0,8)}</CardTitle>
+                    <CardTitle className="text-xl">{candidate.name || `Candidate ${candidate.candidateId.substring(0,8)}`}</CardTitle>
                     <p className="text-sm font-medium text-muted-foreground mt-1">{candidate.headline || "Professional"}</p>
                   </div>
                   {candidate.latestAtsScore !== null && (
