@@ -28,8 +28,13 @@ public class AuthenticationController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> authenticate(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(service.authenticate(request));
+    public ResponseEntity<?> authenticate(@Valid @RequestBody LoginRequest request) {
+        try {
+            return ResponseEntity.ok(service.authenticate(request));
+        } catch (org.springframework.security.core.AuthenticationException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Invalid email or password. If you don't have an account, please sign up.");
+        }
     }
 
     @PostMapping("/complete-oauth")

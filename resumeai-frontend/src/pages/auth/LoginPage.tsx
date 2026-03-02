@@ -53,7 +53,16 @@ export default function LoginPage() {
         navigate("/recruiter");
       }
     } catch (error: any) {
-      toast.error(error.response?.data || "Authentication failed");
+      const message = typeof error.response?.data === "string"
+        ? error.response.data
+        : "Authentication failed";
+
+      if (isLogin && error.response?.status === 401) {
+        toast.error("Account not found. Redirecting to sign up...");
+        setIsLogin(false);
+      } else {
+        toast.error(message);
+      }
     } finally {
       setLoading(false);
     }
