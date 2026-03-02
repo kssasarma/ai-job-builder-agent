@@ -17,7 +17,7 @@ public class CandidateProfile {
     private UUID id;
 
     @OneToOne
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
     private String headline;

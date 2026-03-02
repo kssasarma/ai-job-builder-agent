@@ -53,6 +53,7 @@ public class ResumeService {
         return resume.getCandidate().getId().equals(profile.getId());
     }
 
+    @Transactional
     public ResumeUploadResponse uploadResume(UUID userId, MultipartFile file) throws IOException {
         if (file.isEmpty() || !file.getContentType().equals("application/pdf")) {
             throw new IllegalArgumentException("Invalid file format. Only PDF is allowed.");

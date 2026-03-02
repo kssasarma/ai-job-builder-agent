@@ -14,7 +14,7 @@ public class RecruiterProfile {
     private UUID id;
 
     @OneToOne
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
     @Column(name = "company_name", nullable = false)

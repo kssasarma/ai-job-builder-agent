@@ -58,16 +58,20 @@ public class AuthenticationService {
 
         switch (user.getRole()) {
             case CANDIDATE -> {
-                CandidateProfile profile = new CandidateProfile();
-                profile.setUser(user);
-                profile.setPreferredContactEmail(user.getEmail());
-                candidateProfileRepository.save(profile);
+                if (candidateProfileRepository.findByUserId(user.getId()).isEmpty()) {
+                    CandidateProfile profile = new CandidateProfile();
+                    profile.setUser(user);
+                    profile.setPreferredContactEmail(user.getEmail());
+                    candidateProfileRepository.save(profile);
+                }
             }
             case RECRUITER -> {
-                RecruiterProfile profile = new RecruiterProfile();
-                profile.setUser(user);
-                profile.setCompanyName("Update Company Name"); // Default placeholder
-                recruiterProfileRepository.save(profile);
+                if (recruiterProfileRepository.findByUserId(user.getId()).isEmpty()) {
+                    RecruiterProfile profile = new RecruiterProfile();
+                    profile.setUser(user);
+                    profile.setCompanyName("Update Company Name"); // Default placeholder
+                    recruiterProfileRepository.save(profile);
+                }
             }
         }
 
@@ -117,16 +121,20 @@ public class AuthenticationService {
 
         switch (user.getRole()) {
             case CANDIDATE -> {
-                CandidateProfile profile = new CandidateProfile();
-                profile.setUser(user);
-                profile.setPreferredContactEmail(user.getEmail());
-                candidateProfileRepository.save(profile);
+                if (candidateProfileRepository.findByUserId(user.getId()).isEmpty()) {
+                    CandidateProfile profile = new CandidateProfile();
+                    profile.setUser(user);
+                    profile.setPreferredContactEmail(user.getEmail());
+                    candidateProfileRepository.save(profile);
+                }
             }
             case RECRUITER -> {
-                RecruiterProfile profile = new RecruiterProfile();
-                profile.setUser(user);
-                profile.setCompanyName("Update Company Name");
-                recruiterProfileRepository.save(profile);
+                if (recruiterProfileRepository.findByUserId(user.getId()).isEmpty()) {
+                    RecruiterProfile profile = new RecruiterProfile();
+                    profile.setUser(user);
+                    profile.setCompanyName("Update Company Name");
+                    recruiterProfileRepository.save(profile);
+                }
             }
         }
 
