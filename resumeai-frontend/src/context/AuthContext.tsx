@@ -32,16 +32,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (storedToken && storedUser) {
         try {
           // Validate token by fetching current user info
+          // Intentionally do not clear localStorage aggressively here if it fails
+          // because it might be a 401 being actively refreshed by interceptor
           const response = await apiClient.get("/auth/me");
           setToken(storedToken);
           setUser(response.data);
-        } catch (error) {
-          // Token is invalid, interceptor should have cleaned up or we clean up here
-          localStorage.removeItem("token");
-          localStorage.removeItem("refreshToken");
-          localStorage.removeItem("user");
-          setToken(null);
-          setUser(null);
+        } catch (error: any) {
+          if (error.response?.status !== 401) {
+            localStorage.removeItem("token");
+            localStorage.removeItem("refreshToken");
+            localStorage.removeItem("user");
+            setToken(null);
+            setUser(null);
+          }
         }
       }
       setIsLoading(false);

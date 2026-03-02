@@ -11,6 +11,8 @@ import { useAuth } from "./context/AuthContext";
 import ResumeDashboard from "./pages/candidate/ResumeDashboard";
 import CandidateProfilePage from "./pages/candidate/CandidateProfilePage";
 import RecruiterDashboard from "./pages/recruiter/RecruiterDashboard";
+import RecruiterProfilePage from "./pages/recruiter/RecruiterProfilePage";
+import RecruiterCandidateBrowsePage from "./pages/recruiter/RecruiterCandidateBrowsePage";
 import Navbar from "./components/layout/Navbar";
 
 const PrivateRoute = ({ children, role }: { children: React.ReactElement; role?: "CANDIDATE" | "RECRUITER" }) => {
@@ -75,6 +77,8 @@ function App() {
               <PrivateRoute role="RECRUITER">
                 <Routes>
                   <Route path="" element={<RecruiterDashboard />} />
+                  <Route path="profile" element={<RecruiterProfilePage />} />
+                  <Route path="candidates" element={<RecruiterCandidateBrowsePage />} />
                 </Routes>
               </PrivateRoute>
             }

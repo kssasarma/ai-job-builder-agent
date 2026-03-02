@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { PlusCircle, Search, Loader2, Mail, ExternalLink } from "lucide-react";
+import { PlusCircle, Search, Loader2, Mail, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import apiClient from "../../lib/axios";
 import { toast } from "sonner";
 import { JobCreateModal } from "../../components/recruiter/JobCreateModal";
@@ -14,6 +14,7 @@ export default function RecruiterDashboard() {
   const [selectedJob, setSelectedJob] = useState<any | null>(null);
   const [matches, setMatches] = useState<any[]>([]);
   const [matchingStatus, setMatchingStatus] = useState<string | null>(null);
+  const [expandedJobIds, setExpandedJobIds] = useState<Set<string>>(new Set());
 
   const fetchJobs = async () => {
     try {
@@ -71,6 +72,19 @@ export default function RecruiterDashboard() {
     return "bg-red-500 text-white";
   };
 
+  const toggleJobExpansion = (e: React.MouseEvent, jobId: string) => {
+    e.stopPropagation();
+    setExpandedJobIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(jobId)) {
+        newSet.delete(jobId);
+      } else {
+        newSet.add(jobId);
+      }
+      return newSet;
+    });
+  };
+
   return (
     <div className="container mx-auto p-6 max-w-6xl space-y-8 mt-8">
       <div className="flex justify-between items-center">
@@ -109,12 +123,43 @@ export default function RecruiterDashboard() {
                       {job.status}
                     </Badge>
                   </div>
-                  <CardDescription>{job.company} • {job.location || "Remote"}</CardDescription>
+                  <CardDescription className="flex flex-col gap-1 mt-1">
+                    <span>{job.company} • {job.location || "Remote"} {job.salaryRange ? `• ${job.salaryRange}` : ''}</span>
+                    <div className="mt-2 text-sm text-foreground/80">
+                      <div className={expandedJobIds.has(job.id) ? "" : "line-clamp-3"}>
+                        {job.description}
+                      </div>
+                      {job.description && job.description.length > 150 && (
+                        <button
+                          onClick={(e) => toggleJobExpansion(e, job.id)}
+                          className="text-primary text-xs font-medium flex items-center mt-1 hover:underline"
+                        >
+                          {expandedJobIds.has(job.id) ? (
+                            <><ChevronUp className="h-3 w-3 mr-1" /> Show Less</>
+                          ) : (
+                            <><ChevronDown className="h-3 w-3 mr-1" /> Read More</>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="p-4 pt-0 flex justify-end">
-                  <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); handleMatchCandidates(job.id); }}>
-                    <Search className="mr-2 h-3 w-3" /> Find Matches
-                  </Button>
+                <CardContent className="p-4 pt-0 flex flex-col gap-3">
+                  {job.requiredSkills && job.requiredSkills.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {job.requiredSkills.slice(0, 5).map((skill: string) => (
+                        <Badge key={skill} variant="outline" className="text-[10px]">{skill}</Badge>
+                      ))}
+                      {job.requiredSkills.length > 5 && (
+                        <Badge variant="outline" className="text-[10px]">+{job.requiredSkills.length - 5} more</Badge>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex justify-end">
+                    <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); handleMatchCandidates(job.id); }}>
+                      <Search className="mr-2 h-3 w-3" /> Find Matches
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))
