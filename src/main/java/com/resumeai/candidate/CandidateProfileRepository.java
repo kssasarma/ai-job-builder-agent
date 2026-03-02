@@ -16,32 +16,36 @@ public interface CandidateProfileRepository extends JpaRepository<CandidateProfi
 
     @Query(value = """
         SELECT c.* FROM candidate_profiles c
-        WHERE c.open_to_opportunities = true
+        WHERE COALESCE(c.open_to_opportunities, false) = true
         AND (
             CAST(:skillsText AS TEXT) IS NULL OR
             EXISTS (
                 SELECT 1 FROM unnest(c.skills) s
-                WHERE s ILIKE ANY(string_to_array(CAST(:skillsText AS TEXT), ','))
+                WHERE btrim(s) ILIKE ANY(
+                    ARRAY(SELECT btrim(elem) FROM unnest(string_to_array(CAST(:skillsText AS TEXT), ',')) AS elem)
+                )
             )
         )
         AND (
             :minAtsScore IS NULL OR
-            (SELECT max(r.ats_score) FROM resumes r WHERE r.candidate_id = c.id) >= CAST(CAST(:minAtsScore AS TEXT) AS INTEGER)
+            (SELECT max(r.ats_score) FROM resumes r WHERE r.candidate_id = c.id) >= :minAtsScore
         )
         """,
         countQuery = """
         SELECT count(*) FROM candidate_profiles c
-        WHERE c.open_to_opportunities = true
+        WHERE COALESCE(c.open_to_opportunities, false) = true
         AND (
             CAST(:skillsText AS TEXT) IS NULL OR
             EXISTS (
                 SELECT 1 FROM unnest(c.skills) s
-                WHERE s ILIKE ANY(string_to_array(CAST(:skillsText AS TEXT), ','))
+                WHERE btrim(s) ILIKE ANY(
+                    ARRAY(SELECT btrim(elem) FROM unnest(string_to_array(CAST(:skillsText AS TEXT), ',')) AS elem)
+                )
             )
         )
         AND (
             :minAtsScore IS NULL OR
-            (SELECT max(r.ats_score) FROM resumes r WHERE r.candidate_id = c.id) >= CAST(CAST(:minAtsScore AS TEXT) AS INTEGER)
+            (SELECT max(r.ats_score) FROM resumes r WHERE r.candidate_id = c.id) >= :minAtsScore
         )
         """,
         nativeQuery = true)

@@ -88,8 +88,8 @@ public class AiService {
 
     @Async
     public void extractProfileAsync(UUID resumeId) {
-        updateStatus(resumeId, "PROFILE_EXTRACTION", "PROCESSING", null);
         try {
+            updateStatus(resumeId, "PROFILE_EXTRACTION", "PROCESSING", null);
             self.doExtractProfileWithRetry(resumeId);
             updateStatus(resumeId, "PROFILE_EXTRACTION", "COMPLETED", null);
         } catch (Exception e) {
@@ -118,7 +118,8 @@ public class AiService {
                 .call()
                 .entity(com.resumeai.candidate.ProfileExtractionResponse.class);
 
-        com.resumeai.candidate.CandidateProfile profile = resume.getCandidate();
+        com.resumeai.candidate.CandidateProfile profile = candidateProfileRepository.findById(resume.getCandidate().getId())
+                .orElseThrow(() -> new IllegalStateException("Candidate profile not found for resume " + resumeId));
         boolean profileUpdated = false;
 
         if ((profile.getHeadline() == null || profile.getHeadline().isBlank()) && response.suggestedHeadline() != null) {

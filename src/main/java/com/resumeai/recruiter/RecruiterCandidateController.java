@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.UUID;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -31,7 +32,9 @@ public class RecruiterCandidateController {
             @RequestParam(required = false) Integer minAtsScore,
             Pageable pageable) {
 
-        String skillsText = (skills != null && !skills.isBlank()) ? skills : null;
+        String skillsText = (skills != null && !skills.isBlank())
+                ? Arrays.stream(skills.split(",")).map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.joining(","))
+                : null;
 
         Page<CandidateProfile> profiles = candidateProfileRepository.findCandidates(skillsText, minAtsScore, pageable);
 
