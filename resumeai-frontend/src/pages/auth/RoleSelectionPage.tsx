@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -37,8 +37,8 @@ export default function RoleSelectionPage() {
         tempToken,
       });
 
-      const { token, id, role: userRole } = response.data;
-      login(token, { id, name, email, role: userRole });
+      const { token, refreshToken, id, role: userRole } = response.data;
+      login(token, refreshToken, { id, name, email, role: userRole });
 
       if (userRole === "CANDIDATE") {
         navigate("/candidate");

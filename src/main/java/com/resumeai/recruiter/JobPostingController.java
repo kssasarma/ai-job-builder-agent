@@ -34,7 +34,7 @@ public class JobPostingController {
     }
 
     @PostMapping
-    public ResponseEntity<JobPosting> createJobPosting(
+    public ResponseEntity<JobPostingDto> createJobPosting(
             @Valid @RequestBody JobPostingRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         RecruiterProfile recruiter = getRecruiterProfile(userDetails.getUser().getId());
@@ -44,19 +44,20 @@ public class JobPostingController {
         updateJobFromRequest(job, request);
         if (request.status() != null) job.setStatus(request.status());
 
-        return ResponseEntity.ok(jobPostingRepository.save(job));
+        return ResponseEntity.ok(JobPostingDto.fromEntity(jobPostingRepository.save(job)));
     }
 
     @GetMapping
-    public ResponseEntity<Page<JobPosting>> getJobPostings(
+    public ResponseEntity<Page<JobPostingDto>> getJobPostings(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             Pageable pageable) {
         RecruiterProfile recruiter = getRecruiterProfile(userDetails.getUser().getId());
-        return ResponseEntity.ok(jobPostingRepository.findByRecruiterId(recruiter.getId(), pageable));
+        Page<JobPosting> postings = jobPostingRepository.findByRecruiterId(recruiter.getId(), pageable);
+        return ResponseEntity.ok(postings.map(JobPostingDto::fromEntity));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<JobPosting> getJobPosting(
+    public ResponseEntity<JobPostingDto> getJobPosting(
             @PathVariable UUID id,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         RecruiterProfile recruiter = getRecruiterProfile(userDetails.getUser().getId());
@@ -64,11 +65,11 @@ public class JobPostingController {
         if (!job.getRecruiter().getId().equals(recruiter.getId())) {
             return ResponseEntity.status(403).build();
         }
-        return ResponseEntity.ok(job);
+        return ResponseEntity.ok(JobPostingDto.fromEntity(job));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<JobPosting> updateJobPosting(
+    public ResponseEntity<JobPostingDto> updateJobPosting(
             @PathVariable UUID id,
             @Valid @RequestBody JobPostingRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -81,11 +82,11 @@ public class JobPostingController {
         updateJobFromRequest(job, request);
         if (request.status() != null) job.setStatus(request.status());
 
-        return ResponseEntity.ok(jobPostingRepository.save(job));
+        return ResponseEntity.ok(JobPostingDto.fromEntity(jobPostingRepository.save(job)));
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<JobPosting> updateJobStatus(
+    public ResponseEntity<JobPostingDto> updateJobStatus(
             @PathVariable UUID id,
             @RequestBody JobPostingStatusUpdate statusUpdate,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -96,7 +97,7 @@ public class JobPostingController {
         }
 
         job.setStatus(statusUpdate.status());
-        return ResponseEntity.ok(jobPostingRepository.save(job));
+        return ResponseEntity.ok(JobPostingDto.fromEntity(jobPostingRepository.save(job)));
     }
 
     @DeleteMapping("/{id}")
@@ -145,7 +146,8 @@ public class JobPostingController {
         String status = aiService.getMatchingStatus(id);
         if ("COMPLETED".equals(status)) {
             List<CandidateMatch> matches = candidateMatchRepository.findByJobPostingIdOrderByMatchScoreDesc(id);
-            return ResponseEntity.ok(java.util.Map.of("status", status, "matches", matches));
+            List<CandidateMatchDto> matchDtos = matches.stream().map(CandidateMatchDto::fromEntity).toList();
+            return ResponseEntity.ok(java.util.Map.of("status", status, "matches", matchDtos));
         }
         return ResponseEntity.ok(java.util.Map.of("status", status));
     }

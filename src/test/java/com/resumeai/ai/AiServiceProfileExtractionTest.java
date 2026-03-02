@@ -51,7 +51,8 @@ public class AiServiceProfileExtractionTest {
                 mock(com.resumeai.recruiter.JobPostingRepository.class),
                 candidateProfileRepository,
                 mock(com.resumeai.recruiter.CandidateMatchRepository.class),
-                profileSuggestionRepository
+                profileSuggestionRepository,
+                mock(com.resumeai.common.AsyncOperationRepository.class)
         );
         aiService.setSelf(aiService);
     }

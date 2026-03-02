@@ -40,4 +40,34 @@ public class AuthenticationController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refreshToken(@RequestBody java.util.Map<String, String> request) {
+        try {
+            String refreshToken = request.get("refreshToken");
+            if (refreshToken == null) {
+                return ResponseEntity.badRequest().body("Refresh token is required");
+            }
+            return ResponseEntity.ok(service.refreshToken(refreshToken));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@RequestBody java.util.Map<String, String> request) {
+        String refreshToken = request.get("refreshToken");
+        if (refreshToken != null) {
+            service.logout(refreshToken);
+        }
+        return ResponseEntity.ok().build();
+    }
+
+    @org.springframework.web.bind.annotation.GetMapping("/me")
+    public ResponseEntity<?> getMe(@org.springframework.security.core.annotation.AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(UserDto.fromEntity(userDetails.getUser()));
+    }
 }

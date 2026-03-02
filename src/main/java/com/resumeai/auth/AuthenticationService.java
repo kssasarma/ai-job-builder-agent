@@ -19,16 +19,28 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     public AuthenticationService(UserRepository repository, CandidateProfileRepository candidateProfileRepository,
                                  RecruiterProfileRepository recruiterProfileRepository, PasswordEncoder passwordEncoder,
-                                 JwtService jwtService, AuthenticationManager authenticationManager) {
+                                 JwtService jwtService, AuthenticationManager authenticationManager, RefreshTokenRepository refreshTokenRepository) {
         this.repository = repository;
         this.candidateProfileRepository = candidateProfileRepository;
         this.recruiterProfileRepository = recruiterProfileRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
+        this.refreshTokenRepository = refreshTokenRepository;
+    }
+
+    @Transactional
+    public RefreshToken createRefreshToken(User user) {
+        refreshTokenRepository.deleteByUserId(user.getId());
+        RefreshToken refreshToken = new RefreshToken();
+        refreshToken.setUser(user);
+        refreshToken.setToken(java.util.UUID.randomUUID().toString());
+        refreshToken.setExpiryDate(java.time.Instant.now().plusMillis(7 * 24 * 60 * 60 * 1000L)); // 7 days
+        return refreshTokenRepository.save(refreshToken);
     }
 
     @Transactional
@@ -61,9 +73,11 @@ public class AuthenticationService {
 
         CustomUserDetails userDetails = new CustomUserDetails(user);
         var jwtToken = jwtService.generateToken(userDetails);
-        return new AuthResponse(jwtToken, user.getId(), user.getName(), user.getEmail(), user.getRole().name());
+        RefreshToken refreshToken = createRefreshToken(user);
+        return new AuthResponse(jwtToken, refreshToken.getToken(), jwtService.getJwtExpiration() / 1000, "Bearer", user.getId(), user.getName(), user.getEmail(), user.getRole().name());
     }
 
+    @Transactional
     public AuthResponse authenticate(LoginRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -75,7 +89,8 @@ public class AuthenticationService {
                 .orElseThrow();
         CustomUserDetails userDetails = new CustomUserDetails(user);
         var jwtToken = jwtService.generateToken(userDetails);
-        return new AuthResponse(jwtToken, user.getId(), user.getName(), user.getEmail(), user.getRole().name());
+        RefreshToken refreshToken = createRefreshToken(user);
+        return new AuthResponse(jwtToken, refreshToken.getToken(), jwtService.getJwtExpiration() / 1000, "Bearer", user.getId(), user.getName(), user.getEmail(), user.getRole().name());
     }
 
     @Transactional
@@ -117,6 +132,27 @@ public class AuthenticationService {
 
         CustomUserDetails userDetails = new CustomUserDetails(user);
         var jwtToken = jwtService.generateToken(userDetails);
-        return new AuthResponse(jwtToken, user.getId(), user.getName(), user.getEmail(), user.getRole().name());
+        RefreshToken refreshToken = createRefreshToken(user);
+        return new AuthResponse(jwtToken, refreshToken.getToken(), jwtService.getJwtExpiration() / 1000, "Bearer", user.getId(), user.getName(), user.getEmail(), user.getRole().name());
+    }
+
+    @Transactional
+    public AuthResponse refreshToken(String token) {
+        RefreshToken refreshToken = refreshTokenRepository.findByToken(token)
+                .orElseThrow(() -> new IllegalArgumentException("Refresh token is missing or invalid"));
+
+        if (refreshToken.getExpiryDate().compareTo(java.time.Instant.now()) < 0) {
+            refreshTokenRepository.delete(refreshToken);
+            throw new IllegalArgumentException("Refresh token was expired. Please make a new signin request");
+        }
+
+        User user = refreshToken.getUser();
+        String jwtToken = jwtService.generateToken(new CustomUserDetails(user));
+        return new AuthResponse(jwtToken, refreshToken.getToken(), jwtService.getJwtExpiration() / 1000, "Bearer", user.getId(), user.getName(), user.getEmail(), user.getRole().name());
+    }
+
+    @Transactional
+    public void logout(String token) {
+        refreshTokenRepository.findByToken(token).ifPresent(refreshTokenRepository::delete);
     }
 }

@@ -42,9 +42,11 @@ spring:
             user-name-attribute: sub
 
 app:
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:5173}
   jwt:
     secret: ${JWT_SECRET:verysecretkeythatshouldbechangedinproductionwithatleast32characters}
-    expiration: 86400000 # 24 hours
+    expiration: 900000 # 15 minutes
 
 logging:
   level:

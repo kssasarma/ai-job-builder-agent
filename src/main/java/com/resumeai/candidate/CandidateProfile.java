@@ -29,7 +29,7 @@ public class CandidateProfile {
     private String preferredContactEmail;
 
     @Column(name = "open_to_opportunities")
-    private Boolean openToOpportunities = false;
+    private Boolean openToOpportunities = true;
 
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "skills", columnDefinition = "text[]")

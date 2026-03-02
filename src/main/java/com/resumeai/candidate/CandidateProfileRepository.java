@@ -5,8 +5,50 @@ import java.util.UUID;
 import java.util.Optional;
 
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface CandidateProfileRepository extends JpaRepository<CandidateProfile, UUID> {
     Optional<CandidateProfile> findByUserId(UUID userId);
     List<CandidateProfile> findByOpenToOpportunitiesTrue();
+
+    @Query(value = """
+        SELECT c.* FROM candidate_profiles c
+        WHERE (:includeAll = true OR c.open_to_opportunities = true)
+        AND (
+            CAST(:skillsText AS TEXT) IS NULL OR
+            EXISTS (
+                SELECT 1 FROM unnest(c.skills) s
+                WHERE s ILIKE ANY(string_to_array(CAST(:skillsText AS TEXT), ','))
+            )
+        )
+        AND (
+            :minAtsScore IS NULL OR
+            (SELECT max(r.ats_score) FROM resumes r WHERE r.candidate_id = c.id) >= CAST(CAST(:minAtsScore AS TEXT) AS INTEGER)
+        )
+        """,
+        countQuery = """
+        SELECT count(*) FROM candidate_profiles c
+        WHERE (:includeAll = true OR c.open_to_opportunities = true)
+        AND (
+            CAST(:skillsText AS TEXT) IS NULL OR
+            EXISTS (
+                SELECT 1 FROM unnest(c.skills) s
+                WHERE s ILIKE ANY(string_to_array(CAST(:skillsText AS TEXT), ','))
+            )
+        )
+        AND (
+            :minAtsScore IS NULL OR
+            (SELECT max(r.ats_score) FROM resumes r WHERE r.candidate_id = c.id) >= CAST(CAST(:minAtsScore AS TEXT) AS INTEGER)
+        )
+        """,
+        nativeQuery = true)
+    Page<CandidateProfile> findCandidates(
+        @Param("skillsText") String skillsText,
+        @Param("minAtsScore") Integer minAtsScore,
+        @Param("includeAll") Boolean includeAll,
+        Pageable pageable
+    );
 }
