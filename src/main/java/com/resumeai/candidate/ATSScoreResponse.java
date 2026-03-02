@@ -7,6 +7,8 @@ public record ATSScoreResponse(
         List<CategoryScore> categories,
         List<Improvement> improvements,
         List<String> detectedSkills,
+        String suggestedHeadline,
+        String linkedinUrl,
         String experienceSummary,
         String educationSummary
 ) {

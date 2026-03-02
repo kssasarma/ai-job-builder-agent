@@ -1,8 +1,8 @@
 package com.resumeai.candidate;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import java.time.LocalDateTime;
 
 public record CandidateProfileDto(
         UUID id,
@@ -12,6 +12,7 @@ public record CandidateProfileDto(
         String preferredContactEmail,
         Boolean openToOpportunities,
         List<String> skills,
+        String experienceSummary,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -25,6 +26,7 @@ public record CandidateProfileDto(
                 entity.getPreferredContactEmail(),
                 entity.getOpenToOpportunities(),
                 entity.getSkills(),
+                entity.getExperienceSummary(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );

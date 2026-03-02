@@ -1,24 +1,28 @@
 package com.resumeai.ai;
 
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.resumeai.candidate.ATSScoreResponse;
 import com.resumeai.candidate.Resume;
 import com.resumeai.candidate.ResumeRepository;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.retry.annotation.Retryable;
-import org.springframework.retry.annotation.Backoff;
-
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class AiService {
+
+    // Track which resumeIds had their candidate profile updated during ATS scoring
+    private final Set<UUID> profileUpdatedResumeIds = ConcurrentHashMap.newKeySet();
 
     private final ChatClient chatClient;
     private final ResumeRepository resumeRepository;
@@ -183,15 +187,46 @@ public class AiService {
         resume.setScoreBreakdown(objectMapper.writeValueAsString(response));
         resumeRepository.save(resume);
 
-        // Save detected skills to candidate profile if skills are empty (first time ATS scoring)
-        if (response.detectedSkills() != null && !response.detectedSkills().isEmpty()) {
-            com.resumeai.candidate.CandidateProfile profile = candidateProfileRepository.findById(resume.getCandidate().getId())
-                    .orElse(null);
-            if (profile != null && (profile.getSkills() == null || profile.getSkills().isEmpty())) {
+        // Save extracted profile data to candidate profile (populate empty fields on first ATS scoring)
+        com.resumeai.candidate.CandidateProfile profile = candidateProfileRepository.findById(resume.getCandidate().getId())
+                .orElse(null);
+        if (profile != null) {
+            boolean updated = false;
+
+            if ((profile.getSkills() == null || profile.getSkills().isEmpty())
+                    && response.detectedSkills() != null && !response.detectedSkills().isEmpty()) {
                 profile.setSkills(response.detectedSkills());
+                updated = true;
+            }
+            if ((profile.getHeadline() == null || profile.getHeadline().isBlank())
+                    && response.suggestedHeadline() != null && !response.suggestedHeadline().isBlank()) {
+                profile.setHeadline(response.suggestedHeadline());
+                updated = true;
+            }
+            if ((profile.getLinkedinUrl() == null || profile.getLinkedinUrl().isBlank())
+                    && response.linkedinUrl() != null && !response.linkedinUrl().isBlank()) {
+                profile.setLinkedinUrl(response.linkedinUrl());
+                updated = true;
+            }
+            // Always update experience and education summaries from the latest ATS analysis
+            if (response.experienceSummary() != null && !response.experienceSummary().isBlank()) {
+                profile.setExperienceSummary(response.experienceSummary());
+                updated = true;
+            }
+            if (response.educationSummary() != null && !response.educationSummary().isBlank()) {
+                profile.setEducationSummary(response.educationSummary());
+                updated = true;
+            }
+
+            if (updated) {
                 candidateProfileRepository.save(profile);
+                profileUpdatedResumeIds.add(resumeId);
             }
         }
+    }
+
+    public boolean wasProfileUpdated(UUID resumeId) {
+        return profileUpdatedResumeIds.remove(resumeId);
     }
 
     public String getScoringStatus(UUID resumeId) {

@@ -55,6 +55,13 @@ export default function RecruiterCandidateBrowsePage() {
                 </div>
               </CardHeader>
               <CardContent className="pt-4 flex-1 flex flex-col justify-between space-y-4">
+                {candidate.experienceSummary && (
+                  <div>
+                    <p className="text-sm font-semibold mb-1">Experience Summary:</p>
+                    <p className="text-sm text-muted-foreground">{candidate.experienceSummary}</p>
+                  </div>
+                )}
+
                 {candidate.skills && candidate.skills.length > 0 && (
                   <div>
                     <p className="text-sm font-semibold mb-2">Skills:</p>

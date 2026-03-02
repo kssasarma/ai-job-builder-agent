@@ -1,16 +1,23 @@
 package com.resumeai.candidate;
 
-import com.resumeai.auth.CustomUserDetails;
+import java.io.IOException;
+import java.util.Map;
+import java.util.UUID;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.resumeai.ai.AiService;
-import java.io.IOException;
-import java.util.UUID;
-import java.util.Map;
+import com.resumeai.auth.CustomUserDetails;
 
 @RestController
 @RequestMapping("/api/candidate/resume")
@@ -77,7 +84,8 @@ public class ResumeController {
         }
         String status = aiService.getScoringStatus(id);
         if ("COMPLETED".equals(status)) {
-            return ResponseEntity.ok(Map.of("status", status, "result", aiService.getScore(id)));
+            boolean profileUpdated = aiService.wasProfileUpdated(id);
+            return ResponseEntity.ok(Map.of("status", status, "result", aiService.getScore(id), "profileUpdated", profileUpdated));
         }
         return ResponseEntity.ok(Map.of("status", status));
     }

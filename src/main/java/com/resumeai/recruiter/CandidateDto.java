@@ -10,6 +10,7 @@ public record CandidateDto(
         List<String> skills,
         String linkedinUrl,
         String preferredContactEmail,
-        Integer latestAtsScore
+        Integer latestAtsScore,
+        String experienceSummary
 ) {
 }

@@ -54,6 +54,9 @@ export default function ResumeDashboard() {
             setScoringStatus("COMPLETED");
             setLoading(false);
             toast.success("Analysis complete!");
+            if (res.data.profileUpdated) {
+              toast.success("Profile updated as per the resume.");
+            }
             clearInterval(interval);
           } else if (res.data.status.startsWith("FAILED")) {
             toast.error(res.data.status);
