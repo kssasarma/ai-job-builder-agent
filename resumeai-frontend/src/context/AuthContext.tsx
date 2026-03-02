@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, type ReactNode, useEffect } from "react";
+import apiClient from "../lib/axios";
 
 interface User {
   id: string;
@@ -10,7 +11,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (token: string, user: User) => void;
+  login: (token: string, refreshToken: string, user: User) => void;
   logout: () => void;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -24,25 +25,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
+    const initAuth = async () => {
+      const storedToken = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("user");
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+      if (storedToken && storedUser) {
+        try {
+          // Validate token by fetching current user info
+          const response = await apiClient.get("/auth/me");
+          setToken(storedToken);
+          setUser(response.data);
+        } catch (error) {
+          // Token is invalid, interceptor should have cleaned up or we clean up here
+          localStorage.removeItem("token");
+          localStorage.removeItem("refreshToken");
+          localStorage.removeItem("user");
+          setToken(null);
+          setUser(null);
+        }
+      }
+      setIsLoading(false);
+    };
+
+    initAuth();
   }, []);
 
-  const login = (newToken: string, newUser: User) => {
+  const login = (newToken: string, newRefreshToken: string, newUser: User) => {
     localStorage.setItem("token", newToken);
+    localStorage.setItem("refreshToken", newRefreshToken);
     localStorage.setItem("user", JSON.stringify(newUser));
     setToken(newToken);
     setUser(newUser);
   };
 
   const logout = () => {
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      apiClient.post("/auth/logout", { refreshToken }).catch(() => {});
+    }
     localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
     setToken(null);
     setUser(null);

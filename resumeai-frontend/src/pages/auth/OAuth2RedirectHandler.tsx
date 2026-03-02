@@ -9,13 +9,14 @@ export default function OAuth2RedirectHandler() {
 
   useEffect(() => {
     const token = searchParams.get("token");
+    const refreshToken = searchParams.get("refreshToken");
     const id = searchParams.get("userId");
     const name = searchParams.get("name");
     const email = searchParams.get("email");
     const role = searchParams.get("role") as "CANDIDATE" | "RECRUITER";
 
-    if (token && id && name && email && role) {
-      login(token, { id, name, email, role });
+    if (token && refreshToken && id && name && email && role) {
+      login(token, refreshToken, { id, name, email, role });
 
       if (role === "CANDIDATE") {
         navigate("/candidate");

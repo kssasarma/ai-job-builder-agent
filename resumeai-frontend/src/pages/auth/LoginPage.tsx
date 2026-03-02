@@ -6,6 +6,7 @@ import { useAuth } from "../../context/AuthContext";
 import apiClient from "../../lib/axios";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import React from "react";
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,12 +15,26 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [role, setRole] = useState<"CANDIDATE" | "RECRUITER">("CANDIDATE");
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated, user, isLoading } = useAuth();
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      if (user?.role === "CANDIDATE") {
+        navigate("/candidate", { replace: true });
+      } else {
+        navigate("/recruiter", { replace: true });
+      }
+    }
+  }, [isLoading, isAuthenticated, user, navigate]);
 
   const handleGoogleLogin = () => {
     window.location.href = "http://localhost:8080/oauth2/authorization/google";
   };
+
+  if (isLoading || isAuthenticated) {
+    return null; // or a loading spinner
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,8 +44,8 @@ export default function LoginPage() {
       const payload = isLogin ? { email, password } : { email, password, name, role };
       const response = await apiClient.post(endpoint, payload);
 
-      const { token, id, name: userName, email: userEmail, role: userRole } = response.data;
-      login(token, { id, name: userName, email: userEmail, role: userRole });
+      const { token, refreshToken, id, name: userName, email: userEmail, role: userRole } = response.data;
+      login(token, refreshToken, { id, name: userName, email: userEmail, role: userRole });
 
       if (userRole === "CANDIDATE") {
         navigate("/candidate");

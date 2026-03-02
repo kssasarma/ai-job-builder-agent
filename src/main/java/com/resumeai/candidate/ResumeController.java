@@ -35,7 +35,10 @@ public class ResumeController {
     }
 
     @GetMapping("/{id}/profile-extraction/status")
-    public ResponseEntity<?> getProfileExtractionStatus(@PathVariable UUID id) {
+    public ResponseEntity<?> getProfileExtractionStatus(@PathVariable UUID id, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (!resumeService.verifyResumeOwnership(id, userDetails.getUser().getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         String status = aiService.getProfileExtractionStatus(id);
         return ResponseEntity.ok(Map.of("status", status));
     }
@@ -55,7 +58,10 @@ public class ResumeController {
     }
 
     @PostMapping("/{id}/score")
-    public ResponseEntity<?> scoreResume(@PathVariable UUID id) {
+    public ResponseEntity<?> scoreResume(@PathVariable UUID id, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (!resumeService.verifyResumeOwnership(id, userDetails.getUser().getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         try {
             aiService.scoreResumeAsync(id);
             return ResponseEntity.accepted().body(Map.of("message", "Scoring started", "resumeId", id));
@@ -65,7 +71,10 @@ public class ResumeController {
     }
 
     @GetMapping("/{id}/score/status")
-    public ResponseEntity<?> getScoreStatus(@PathVariable UUID id) {
+    public ResponseEntity<?> getScoreStatus(@PathVariable UUID id, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (!resumeService.verifyResumeOwnership(id, userDetails.getUser().getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         String status = aiService.getScoringStatus(id);
         if ("COMPLETED".equals(status)) {
             return ResponseEntity.ok(Map.of("status", status, "result", aiService.getScore(id)));
@@ -74,7 +83,10 @@ public class ResumeController {
     }
 
     @PostMapping("/{id}/analyze-compatibility")
-    public ResponseEntity<?> analyzeCompatibility(@PathVariable UUID id, @RequestBody JobDescriptionRequest request) {
+    public ResponseEntity<?> analyzeCompatibility(@PathVariable UUID id, @RequestBody JobDescriptionRequest request, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (!resumeService.verifyResumeOwnership(id, userDetails.getUser().getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         try {
             CompatibilityResponse response = aiService.analyzeCompatibility(id, request.jobDescription());
             return ResponseEntity.ok(response);
@@ -84,7 +96,10 @@ public class ResumeController {
     }
 
     @PostMapping("/{id}/tailor")
-    public ResponseEntity<?> tailorResume(@PathVariable UUID id, @RequestBody TailorResumeRequest request) {
+    public ResponseEntity<?> tailorResume(@PathVariable UUID id, @RequestBody TailorResumeRequest request, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (!resumeService.verifyResumeOwnership(id, userDetails.getUser().getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         try {
             TailoredResumeResponse response = aiService.tailorResume(id, request);
             return ResponseEntity.ok(response);

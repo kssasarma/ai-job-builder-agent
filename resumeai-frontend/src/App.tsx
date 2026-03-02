@@ -11,6 +11,7 @@ import { useAuth } from "./context/AuthContext";
 import ResumeDashboard from "./pages/candidate/ResumeDashboard";
 import CandidateProfilePage from "./pages/candidate/CandidateProfilePage";
 import RecruiterDashboard from "./pages/recruiter/RecruiterDashboard";
+import Navbar from "./components/layout/Navbar";
 
 const PrivateRoute = ({ children, role }: { children: React.ReactElement; role?: "CANDIDATE" | "RECRUITER" }) => {
   const { isAuthenticated, user, isLoading } = useAuth();
@@ -27,7 +28,26 @@ const PrivateRoute = ({ children, role }: { children: React.ReactElement; role?:
     return <Navigate to="/" replace />;
   }
 
-  return children;
+  return (
+    <div className="flex flex-col min-h-screen">
+      <Navbar />
+      <main className="flex-1">
+        {children}
+      </main>
+    </div>
+  );
+};
+
+const RootRedirect = () => {
+  const { isAuthenticated, user, isLoading } = useAuth();
+
+  if (isLoading) return <div>Loading...</div>;
+
+  if (isAuthenticated) {
+    return user?.role === "CANDIDATE" ? <Navigate to="/candidate" replace /> : <Navigate to="/recruiter" replace />;
+  }
+
+  return <Navigate to="/login" replace />;
 };
 
 function App() {
@@ -53,11 +73,13 @@ function App() {
             path="/recruiter/*"
             element={
               <PrivateRoute role="RECRUITER">
-                <RecruiterDashboard />
+                <Routes>
+                  <Route path="" element={<RecruiterDashboard />} />
+                </Routes>
               </PrivateRoute>
             }
           />
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<RootRedirect />} />
         </Routes>
         <Toaster />
       </AuthProvider>

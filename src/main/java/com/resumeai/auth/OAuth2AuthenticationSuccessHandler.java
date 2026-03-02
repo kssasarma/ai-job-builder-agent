@@ -11,16 +11,21 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 import java.util.Optional;
+import org.springframework.beans.factory.annotation.Value;
 
 @Component
 public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final String frontendUrl;
 
-    public OAuth2AuthenticationSuccessHandler(JwtService jwtService, UserRepository userRepository) {
+    public OAuth2AuthenticationSuccessHandler(JwtService jwtService, UserRepository userRepository, RefreshTokenRepository refreshTokenRepository, @Value("${app.frontend.url}") String frontendUrl) {
         this.jwtService = jwtService;
         this.userRepository = userRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
+        this.frontendUrl = frontendUrl;
     }
 
     @Override
@@ -36,8 +41,17 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             User user = userOptional.get();
             CustomUserDetails userDetails = new CustomUserDetails(user);
             String token = jwtService.generateToken(userDetails);
-            targetUrl = UriComponentsBuilder.fromUriString("http://localhost:5173/oauth2/redirect")
+
+            refreshTokenRepository.deleteByUserId(user.getId());
+            RefreshToken refreshToken = new RefreshToken();
+            refreshToken.setUser(user);
+            refreshToken.setToken(java.util.UUID.randomUUID().toString());
+            refreshToken.setExpiryDate(java.time.Instant.now().plusMillis(7 * 24 * 60 * 60 * 1000L));
+            refreshTokenRepository.save(refreshToken);
+
+            targetUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/oauth2/redirect")
                     .queryParam("token", token)
+                    .queryParam("refreshToken", refreshToken.getToken())
                     .queryParam("userId", user.getId())
                     .queryParam("name", user.getName())
                     .queryParam("email", user.getEmail())
@@ -51,7 +65,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             tempUser.setName(name);
             tempUser.setRole(com.resumeai.common.Role.CANDIDATE); // Dummy role for token generation, it will be validated
             String tempToken = jwtService.generateToken(new CustomUserDetails(tempUser));
-            targetUrl = UriComponentsBuilder.fromUriString("http://localhost:5173/register/role-selection")
+            targetUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/register/role-selection")
                     .queryParam("email", email)
                     .queryParam("name", name)
                     .queryParam("tempToken", tempToken)

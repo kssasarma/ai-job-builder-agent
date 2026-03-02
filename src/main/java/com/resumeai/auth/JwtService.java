@@ -36,6 +36,10 @@ public class JwtService {
         return generateToken(new HashMap<>(), userDetails);
     }
 
+    public long getJwtExpiration() {
+        return jwtExpiration;
+    }
+
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
         if (userDetails instanceof CustomUserDetails customUserDetails) {
             extraClaims.put("userId", customUserDetails.getUser().getId().toString());

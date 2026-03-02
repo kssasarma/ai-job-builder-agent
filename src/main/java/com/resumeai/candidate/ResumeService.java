@@ -45,6 +45,14 @@ public class ResumeService {
     }
 
     @Transactional
+    public boolean verifyResumeOwnership(UUID resumeId, UUID userId) {
+        CandidateProfile profile = candidateProfileRepository.findByUserId(userId).orElse(null);
+        if (profile == null) return false;
+        Resume resume = resumeRepository.findById(resumeId).orElse(null);
+        if (resume == null) return false;
+        return resume.getCandidate().getId().equals(profile.getId());
+    }
+
     public ResumeUploadResponse uploadResume(UUID userId, MultipartFile file) throws IOException {
         if (file.isEmpty() || !file.getContentType().equals("application/pdf")) {
             throw new IllegalArgumentException("Invalid file format. Only PDF is allowed.");

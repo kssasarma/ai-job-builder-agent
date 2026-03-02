@@ -49,6 +49,7 @@ public class ProfileSuggestionController {
         if (suggestion.getSuggestedHeadline() != null) candidate.setHeadline(suggestion.getSuggestedHeadline());
         if (suggestion.getSuggestedLinkedinUrl() != null) candidate.setLinkedinUrl(suggestion.getSuggestedLinkedinUrl());
         if (suggestion.getSuggestedSkills() != null) candidate.setSkills(suggestion.getSuggestedSkills());
+        candidate.setOpenToOpportunities(true);
 
         candidateProfileRepository.save(candidate);
 

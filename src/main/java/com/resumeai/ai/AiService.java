@@ -42,16 +42,12 @@ public class AiService {
     @Value("classpath:/prompts/profile-extraction.st")
     private Resource profileExtractionPromptTemplate;
 
-    // In-memory status map for simplicity (UUID -> Status String)
-    private final Map<UUID, String> scoringStatusMap = new ConcurrentHashMap<>();
-    private final Map<UUID, String> matchingStatusMap = new ConcurrentHashMap<>();
-    private final Map<UUID, String> profileExtractionStatusMap = new ConcurrentHashMap<>();
-
     private final com.resumeai.candidate.TailoringHistoryRepository tailoringHistoryRepository;
     private final com.resumeai.recruiter.JobPostingRepository jobPostingRepository;
     private final com.resumeai.candidate.CandidateProfileRepository candidateProfileRepository;
     private final com.resumeai.recruiter.CandidateMatchRepository candidateMatchRepository;
     private final com.resumeai.candidate.ProfileSuggestionRepository profileSuggestionRepository;
+    private final com.resumeai.common.AsyncOperationRepository asyncOperationRepository;
     private AiService self;
 
     public AiService(ChatClient.Builder chatClientBuilder, ResumeRepository resumeRepository, ObjectMapper objectMapper,
@@ -59,7 +55,8 @@ public class AiService {
                      com.resumeai.recruiter.JobPostingRepository jobPostingRepository,
                      com.resumeai.candidate.CandidateProfileRepository candidateProfileRepository,
                      com.resumeai.recruiter.CandidateMatchRepository candidateMatchRepository,
-                     com.resumeai.candidate.ProfileSuggestionRepository profileSuggestionRepository) {
+                     com.resumeai.candidate.ProfileSuggestionRepository profileSuggestionRepository,
+                     com.resumeai.common.AsyncOperationRepository asyncOperationRepository) {
         this.chatClient = chatClientBuilder.build();
         this.resumeRepository = resumeRepository;
         this.objectMapper = objectMapper;
@@ -68,6 +65,20 @@ public class AiService {
         this.candidateProfileRepository = candidateProfileRepository;
         this.candidateMatchRepository = candidateMatchRepository;
         this.profileSuggestionRepository = profileSuggestionRepository;
+        this.asyncOperationRepository = asyncOperationRepository;
+    }
+
+    private void updateStatus(UUID referenceId, String type, String status, String errorMessage) {
+        com.resumeai.common.AsyncOperation operation = asyncOperationRepository.findByReferenceIdAndType(referenceId, type)
+                .orElseGet(() -> {
+                    com.resumeai.common.AsyncOperation newOp = new com.resumeai.common.AsyncOperation();
+                    newOp.setReferenceId(referenceId);
+                    newOp.setType(type);
+                    return newOp;
+                });
+        operation.setStatus(status);
+        operation.setErrorMessage(errorMessage);
+        asyncOperationRepository.save(operation);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -77,17 +88,19 @@ public class AiService {
 
     @Async
     public void extractProfileAsync(UUID resumeId) {
-        profileExtractionStatusMap.put(resumeId, "PROCESSING");
+        updateStatus(resumeId, "PROFILE_EXTRACTION", "PROCESSING", null);
         try {
             self.doExtractProfileWithRetry(resumeId);
-            profileExtractionStatusMap.put(resumeId, "COMPLETED");
+            updateStatus(resumeId, "PROFILE_EXTRACTION", "COMPLETED", null);
         } catch (Exception e) {
-            profileExtractionStatusMap.put(resumeId, "FAILED: " + e.getMessage());
+            updateStatus(resumeId, "PROFILE_EXTRACTION", "FAILED", e.getMessage());
         }
     }
 
     public String getProfileExtractionStatus(UUID resumeId) {
-        return profileExtractionStatusMap.getOrDefault(resumeId, "UNKNOWN");
+        return asyncOperationRepository.findByReferenceIdAndType(resumeId, "PROFILE_EXTRACTION")
+                .map(op -> "FAILED".equals(op.getStatus()) ? "FAILED: " + op.getErrorMessage() : op.getStatus())
+                .orElse("UNKNOWN");
     }
 
     @Transactional
@@ -140,12 +153,12 @@ public class AiService {
 
     @Async
     public void scoreResumeAsync(UUID resumeId) {
-        scoringStatusMap.put(resumeId, "PROCESSING");
+        updateStatus(resumeId, "SCORING", "PROCESSING", null);
         try {
             self.doScoreResumeWithRetry(resumeId);
-            scoringStatusMap.put(resumeId, "COMPLETED");
+            updateStatus(resumeId, "SCORING", "COMPLETED", null);
         } catch (Exception e) {
-            scoringStatusMap.put(resumeId, "FAILED: " + e.getMessage());
+            updateStatus(resumeId, "SCORING", "FAILED", e.getMessage());
         }
     }
 
@@ -171,7 +184,9 @@ public class AiService {
     }
 
     public String getScoringStatus(UUID resumeId) {
-        return scoringStatusMap.getOrDefault(resumeId, "UNKNOWN");
+        return asyncOperationRepository.findByReferenceIdAndType(resumeId, "SCORING")
+                .map(op -> "FAILED".equals(op.getStatus()) ? "FAILED: " + op.getErrorMessage() : op.getStatus())
+                .orElse("UNKNOWN");
     }
 
     public ATSScoreResponse getScore(UUID resumeId) {
@@ -262,12 +277,12 @@ public class AiService {
 
     @Async
     public void matchCandidatesAsync(UUID jobPostingId) {
-        matchingStatusMap.put(jobPostingId, "PROCESSING");
+        updateStatus(jobPostingId, "MATCHING", "PROCESSING", null);
         try {
             self.doMatchCandidatesWithRetry(jobPostingId);
-            matchingStatusMap.put(jobPostingId, "COMPLETED");
+            updateStatus(jobPostingId, "MATCHING", "COMPLETED", null);
         } catch (Exception e) {
-            matchingStatusMap.put(jobPostingId, "FAILED: " + e.getMessage());
+            updateStatus(jobPostingId, "MATCHING", "FAILED", e.getMessage());
         }
     }
 
@@ -324,7 +339,9 @@ public class AiService {
     }
 
     public String getMatchingStatus(UUID jobPostingId) {
-        return matchingStatusMap.getOrDefault(jobPostingId, "UNKNOWN");
+        return asyncOperationRepository.findByReferenceIdAndType(jobPostingId, "MATCHING")
+                .map(op -> "FAILED".equals(op.getStatus()) ? "FAILED: " + op.getErrorMessage() : op.getStatus())
+                .orElse("UNKNOWN");
     }
 
     public java.util.List<com.resumeai.candidate.TailoringHistory> getTailoringHistory(UUID resumeId) {
