@@ -15,4 +15,5 @@ Return ONLY valid JSON matching this schema:
   "identifiedGaps": ["gap1", "gap2"],
   "experienceSummary": "A brief summary of their relevant experience."
 }
+Do NOT hallucinate skills or experiences. Rely strictly on the provided resume and candidate profile.
 Do not include markdown blocks or any other text.

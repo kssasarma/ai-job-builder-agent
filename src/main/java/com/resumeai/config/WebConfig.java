@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 @Configuration
 public class WebConfig {
 
-    @Value("${app.frontend.url}")
+    @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
 
     @Bean

@@ -29,12 +29,11 @@ public class RecruiterCandidateController {
     public ResponseEntity<Page<CandidateDto>> getCandidates(
             @RequestParam(required = false) String skills,
             @RequestParam(required = false) Integer minAtsScore,
-            @RequestParam(required = false, defaultValue = "false") Boolean includeAll,
             Pageable pageable) {
 
         String skillsText = (skills != null && !skills.isBlank()) ? skills : null;
 
-        Page<CandidateProfile> profiles = candidateProfileRepository.findCandidates(skillsText, minAtsScore, includeAll, pageable);
+        Page<CandidateProfile> profiles = candidateProfileRepository.findCandidates(skillsText, minAtsScore, pageable);
 
         Page<CandidateDto> candidateDtos = profiles.map(profile -> {
             Integer latestAtsScore = resumeRepository.findFirstByCandidateIdAndIsPrimaryTrue(profile.getId())

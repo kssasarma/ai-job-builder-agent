@@ -21,7 +21,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     private final RefreshTokenRepository refreshTokenRepository;
     private final String frontendUrl;
 
-    public OAuth2AuthenticationSuccessHandler(JwtService jwtService, UserRepository userRepository, RefreshTokenRepository refreshTokenRepository, @Value("${app.frontend.url}") String frontendUrl) {
+    public OAuth2AuthenticationSuccessHandler(JwtService jwtService, UserRepository userRepository, RefreshTokenRepository refreshTokenRepository, @Value("${app.frontend.url:http://localhost:5173}") String frontendUrl) {
         this.jwtService = jwtService;
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;

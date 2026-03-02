@@ -12,4 +12,5 @@ Provide a comprehensive analysis including:
 5. A brief summary of their professional experience.
 6. A brief summary of their educational background.
 
+Do NOT hallucinate skills or experiences. Rely strictly on the provided resume text.
 Output ONLY valid JSON matching the exact schema requested. Do not include markdown formatting or extra text.

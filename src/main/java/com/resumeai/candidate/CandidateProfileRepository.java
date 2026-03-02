@@ -16,7 +16,7 @@ public interface CandidateProfileRepository extends JpaRepository<CandidateProfi
 
     @Query(value = """
         SELECT c.* FROM candidate_profiles c
-        WHERE (:includeAll = true OR c.open_to_opportunities = true)
+        WHERE c.open_to_opportunities = true
         AND (
             CAST(:skillsText AS TEXT) IS NULL OR
             EXISTS (
@@ -31,7 +31,7 @@ public interface CandidateProfileRepository extends JpaRepository<CandidateProfi
         """,
         countQuery = """
         SELECT count(*) FROM candidate_profiles c
-        WHERE (:includeAll = true OR c.open_to_opportunities = true)
+        WHERE c.open_to_opportunities = true
         AND (
             CAST(:skillsText AS TEXT) IS NULL OR
             EXISTS (
@@ -48,7 +48,6 @@ public interface CandidateProfileRepository extends JpaRepository<CandidateProfi
     Page<CandidateProfile> findCandidates(
         @Param("skillsText") String skillsText,
         @Param("minAtsScore") Integer minAtsScore,
-        @Param("includeAll") Boolean includeAll,
         Pageable pageable
     );
 }
