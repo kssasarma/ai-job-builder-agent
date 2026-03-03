@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -20,12 +21,14 @@ public class JobPostingController {
 
     private final com.resumeai.ai.AiService aiService;
     private final CandidateMatchRepository candidateMatchRepository;
+    private final JobApplicationRepository jobApplicationRepository;
 
-    public JobPostingController(JobPostingRepository jobPostingRepository, RecruiterProfileRepository recruiterProfileRepository, com.resumeai.ai.AiService aiService, CandidateMatchRepository candidateMatchRepository) {
+    public JobPostingController(JobPostingRepository jobPostingRepository, RecruiterProfileRepository recruiterProfileRepository, com.resumeai.ai.AiService aiService, CandidateMatchRepository candidateMatchRepository, JobApplicationRepository jobApplicationRepository) {
         this.jobPostingRepository = jobPostingRepository;
         this.recruiterProfileRepository = recruiterProfileRepository;
         this.aiService = aiService;
         this.candidateMatchRepository = candidateMatchRepository;
+        this.jobApplicationRepository = jobApplicationRepository;
     }
 
     private RecruiterProfile getRecruiterProfile(UUID userId) {
@@ -150,6 +153,49 @@ public class JobPostingController {
             return ResponseEntity.ok(java.util.Map.of("status", status, "matches", matchDtos));
         }
         return ResponseEntity.ok(java.util.Map.of("status", status));
+    }
+
+    @GetMapping("/{id}/applicants")
+    public ResponseEntity<?> getApplicants(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            Pageable pageable) {
+        RecruiterProfile recruiter = getRecruiterProfile(userDetails.getUser().getId());
+        JobPosting job = jobPostingRepository.findById(id).orElseThrow();
+        if (!job.getRecruiter().getId().equals(recruiter.getId())) {
+            return ResponseEntity.status(403).build();
+        }
+        Page<JobApplicationDto> applicants = jobApplicationRepository
+                .findByJobPostingIdOrderByAppliedAtDesc(id, pageable)
+                .map(JobApplicationDto::fromEntity);
+        return ResponseEntity.ok(applicants);
+    }
+
+    @PatchMapping("/{id}/applicants/{applicationId}/status")
+    public ResponseEntity<?> updateApplicantStatus(
+            @PathVariable UUID id,
+            @PathVariable UUID applicationId,
+            @RequestBody ApplicationStatusUpdate statusUpdate,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        RecruiterProfile recruiter = getRecruiterProfile(userDetails.getUser().getId());
+        JobPosting job = jobPostingRepository.findById(id).orElseThrow();
+        if (!job.getRecruiter().getId().equals(recruiter.getId())) {
+            return ResponseEntity.status(403).build();
+        }
+
+        Set<String> validStatuses = Set.of("APPLIED", "CONTACTED", "INTERVIEW", "REJECTED", "SELECTED");
+        if (statusUpdate.status() == null || !validStatuses.contains(statusUpdate.status())) {
+            return ResponseEntity.badRequest().body("Invalid status. Must be one of: APPLIED, CONTACTED, INTERVIEW, REJECTED, SELECTED");
+        }
+
+        JobApplication application = jobApplicationRepository.findById(applicationId).orElseThrow();
+        if (!application.getJobPosting().getId().equals(id)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        application.setStatus(statusUpdate.status());
+        JobApplication saved = jobApplicationRepository.save(application);
+        return ResponseEntity.ok(JobApplicationDto.fromEntity(saved));
     }
 
     private void updateJobFromRequest(JobPosting job, JobPostingRequest request) {

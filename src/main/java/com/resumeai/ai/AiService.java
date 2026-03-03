@@ -46,6 +46,9 @@ public class AiService {
     @Value("classpath:/prompts/profile-extraction.st")
     private Resource profileExtractionPromptTemplate;
 
+    @Value("classpath:/prompts/job-compatibility.st")
+    private Resource jobCompatibilityPromptTemplate;
+
     private final com.resumeai.candidate.TailoringHistoryRepository tailoringHistoryRepository;
     private final com.resumeai.recruiter.JobPostingRepository jobPostingRepository;
     private final com.resumeai.candidate.CandidateProfileRepository candidateProfileRepository;
@@ -393,6 +396,45 @@ public class AiService {
 
     public java.util.List<com.resumeai.candidate.TailoringHistory> getTailoringHistory(UUID resumeId) {
         return tailoringHistoryRepository.findByResumeIdOrderByCreatedAtDesc(resumeId);
+    }
+
+    public com.resumeai.candidate.JobCompatibilityResponse checkJobCompatibility(
+            com.resumeai.recruiter.JobPosting job,
+            com.resumeai.candidate.CandidateProfile candidate) {
+        String experienceRange = (job.getExperienceMin() != null || job.getExperienceMax() != null)
+                ? (job.getExperienceMin() != null ? job.getExperienceMin() : 0)
+                  + "-" + (job.getExperienceMax() != null ? job.getExperienceMax() : "+") + " years"
+                : "Not specified";
+
+        String requiredSkills = (job.getRequiredSkills() != null && !job.getRequiredSkills().isEmpty())
+                ? String.join(", ", job.getRequiredSkills())
+                : "Not specified";
+
+        String candidateSkills = (candidate.getSkills() != null && !candidate.getSkills().isEmpty())
+                ? String.join(", ", candidate.getSkills())
+                : "Not specified";
+
+        String userMessage = "JOB DETAILS:\n"
+                + "Title: " + job.getTitle() + "\n"
+                + "Company: " + job.getCompany() + "\n"
+                + "Description: " + (job.getDescription() != null ? job.getDescription() : "Not provided") + "\n"
+                + "Required Skills: " + requiredSkills + "\n"
+                + "Experience Required: " + experienceRange + "\n\n"
+                + "CANDIDATE PROFILE:\n"
+                + "Headline: " + (candidate.getHeadline() != null ? candidate.getHeadline() : "Not specified") + "\n"
+                + "Skills: " + candidateSkills + "\n"
+                + "Experience Summary: " + (candidate.getExperienceSummary() != null ? candidate.getExperienceSummary() : "Not provided") + "\n"
+                + "Education Summary: " + (candidate.getEducationSummary() != null ? candidate.getEducationSummary() : "Not provided");
+
+        try {
+            return chatClient.prompt()
+                    .system(s -> s.text(jobCompatibilityPromptTemplate))
+                    .user(u -> u.text(userMessage))
+                    .call()
+                    .entity(com.resumeai.candidate.JobCompatibilityResponse.class);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to check job compatibility", e);
+        }
     }
 
     @Transactional

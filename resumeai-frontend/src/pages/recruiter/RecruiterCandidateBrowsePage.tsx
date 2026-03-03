@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { ExternalLink, Mail, Loader2 } from "lucide-react";
+import { ExternalLink, Mail, Loader2, Download } from "lucide-react";
 
 export default function RecruiterCandidateBrowsePage() {
   const location = useLocation();
@@ -23,6 +23,22 @@ export default function RecruiterCandidateBrowsePage() {
       }
       return next;
     });
+  };
+
+  const downloadResume = async (candidateId: string, candidateName?: string) => {
+    try {
+      const res = await apiClient.get(`/recruiter/candidates/${candidateId}/resume/download`, { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `resume_${(candidateName || candidateId).replace(/\s+/g, '_')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("No resume available for this candidate.");
+    }
   };
 
   useEffect(() => {
@@ -108,6 +124,14 @@ export default function RecruiterCandidateBrowsePage() {
                       </a>
                     </Button>
                   )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    title="Download Resume"
+                    onClick={() => downloadResume(candidate.candidateId, candidate.name)}
+                  >
+                    <Download className="mr-2 h-4 w-4" /> Resume
+                  </Button>
                   {candidate.preferredContactEmail && (
                     <Button size="sm" asChild>
                       <a href={`mailto:${candidate.preferredContactEmail}`}>

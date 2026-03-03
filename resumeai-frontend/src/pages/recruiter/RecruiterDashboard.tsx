@@ -3,10 +3,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../..
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../components/ui/dialog";
-import { PlusCircle, Search, Loader2, Mail, ExternalLink, ChevronDown, ChevronUp, MapPin, Briefcase, Pencil, Trash2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
+import { PlusCircle, Search, Loader2, Mail, ExternalLink, ChevronDown, ChevronUp, MapPin, Briefcase, Pencil, Trash2, Users, Download } from "lucide-react";
 import apiClient from "../../lib/axios";
 import { toast } from "sonner";
 import { JobCreateModal } from "../../components/recruiter/JobCreateModal";
+
+const APPLICATION_STATUSES = [
+  { value: "APPLIED", label: "Applied", color: "bg-blue-500/10 text-blue-700" },
+  { value: "CONTACTED", label: "Contacted", color: "bg-purple-500/10 text-purple-700" },
+  { value: "INTERVIEW", label: "Interview", color: "bg-amber-500/10 text-amber-700" },
+  { value: "REJECTED", label: "Rejected", color: "bg-red-500/10 text-red-700" },
+  { value: "SELECTED", label: "Selected", color: "bg-green-500/10 text-green-700" },
+];
 
 export default function RecruiterDashboard() {
   const [jobs, setJobs] = useState<any[]>([]);
@@ -21,6 +30,9 @@ export default function RecruiterDashboard() {
   const [descExpanded, setDescExpanded] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const [applicants, setApplicants] = useState<any[]>([]);
+  const [applicantsLoading, setApplicantsLoading] = useState(false);
+
   const fetchJobs = async () => {
     try {
       const res = await apiClient.get("/recruiter/jobs?size=50&sort=createdAt,desc");
@@ -34,9 +46,30 @@ export default function RecruiterDashboard() {
     }
   };
 
+  const fetchApplicants = async (jobId: string) => {
+    setApplicantsLoading(true);
+    try {
+      const res = await apiClient.get(`/recruiter/jobs/${jobId}/applicants?size=50`);
+      setApplicants(res.data.content || []);
+    } catch {
+      setApplicants([]);
+    } finally {
+      setApplicantsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchJobs();
   }, []);
+
+  const handleSelectJob = (job: any) => {
+    setSelectedJob(job);
+    setDescExpanded(false);
+    setMatches([]);
+    setMatchingStatus(null);
+    setApplicants([]);
+    fetchApplicants(job.id);
+  };
 
   const handleMatchCandidates = async (jobId: string) => {
     setSelectedJob(jobs.find(j => j.id === jobId));
@@ -107,12 +140,49 @@ export default function RecruiterDashboard() {
       setSelectedJob(null);
       setMatches([]);
       setMatchingStatus(null);
+      setApplicants([]);
       setDeleteConfirmOpen(false);
       fetchJobs();
     } catch {
       toast.error("Failed to delete job posting.");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleApplicantStatusChange = async (applicationId: string, newStatus: string) => {
+    if (!selectedJob) return;
+    try {
+      const res = await apiClient.patch(
+        `/recruiter/jobs/${selectedJob.id}/applicants/${applicationId}/status`,
+        { status: newStatus }
+      );
+      setApplicants(prev =>
+        prev.map(app => app.id === applicationId ? { ...app, status: res.data.status } : app)
+      );
+      toast.success("Applicant status updated.");
+    } catch {
+      toast.error("Failed to update status.");
+    }
+  };
+
+  const getStatusInfo = (status: string) => {
+    return APPLICATION_STATUSES.find(s => s.value === status) || APPLICATION_STATUSES[0];
+  };
+
+  const downloadResume = async (candidateId: string, candidateName?: string) => {
+    try {
+      const res = await apiClient.get(`/recruiter/candidates/${candidateId}/resume/download`, { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `resume_${(candidateName || candidateId).replace(/\s+/g, '_')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("No resume available for this candidate.");
     }
   };
 
@@ -152,7 +222,7 @@ export default function RecruiterDashboard() {
               <Card
                 key={job.id}
                 className={`cursor-pointer transition-colors hover:border-primary/50 ${selectedJob?.id === job.id ? 'border-primary shadow-sm' : ''}`}
-                onClick={() => { setSelectedJob(job); setDescExpanded(false); setMatches([]); setMatchingStatus(null); }}
+                onClick={() => handleSelectJob(job)}
               >
                 <CardHeader className="p-4">
                   <div className="flex justify-between items-start">
@@ -204,7 +274,7 @@ export default function RecruiterDashboard() {
           )}
         </div>
 
-        {/* Right Column: Matching Results */}
+        {/* Right Column: Details + Applicants + Matching Results */}
         <div className="md:col-span-8">
           {!selectedJob ? (
             <div className="h-full min-h-[400px] border-2 border-dashed rounded-xl flex items-center justify-center text-muted-foreground">
@@ -279,6 +349,87 @@ export default function RecruiterDashboard() {
                 </CardContent>
               </Card>
 
+              {/* Applicants Section */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="text-base">
+                      Applicants {!applicantsLoading && `(${applicants.length})`}
+                    </CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {applicantsLoading ? (
+                    <div className="flex justify-center p-4">
+                      <Loader2 className="animate-spin h-5 w-5 text-primary" />
+                    </div>
+                  ) : applicants.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">No candidates have applied yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {applicants.map(app => {
+                        const statusInfo = getStatusInfo(app.status);
+                        return (
+                          <div key={app.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-muted/20">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">
+                                {app.candidate?.name || `Candidate ${app.candidate?.id?.substring(0, 8)}`}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {app.candidate?.headline || "Professional"}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Applied {new Date(app.appliedAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {app.candidate?.preferredContactEmail && (
+                                <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                                  <a href={`mailto:${app.candidate.preferredContactEmail}`}>
+                                    <Mail className="h-3.5 w-3.5" />
+                                  </a>
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                title="Download Resume"
+                                onClick={() => downloadResume(app.candidate?.id, app.candidate?.name)}
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                              </Button>
+                              <Select
+                                value={app.status}
+                                onValueChange={val => handleApplicantStatusChange(app.id, val)}
+                              >
+                                <SelectTrigger className="h-7 w-[120px] text-xs">
+                                  <SelectValue>
+                                    <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${statusInfo.color}`}>
+                                      {statusInfo.label}
+                                    </span>
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {APPLICATION_STATUSES.map(s => (
+                                    <SelectItem key={s.value} value={s.value}>
+                                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${s.color}`}>
+                                        {s.label}
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               {matchingStatus === "PROCESSING" && (
                 <Card className="border-primary/50 bg-primary/5">
                   <CardContent className="flex flex-col items-center justify-center p-12 space-y-4">
@@ -315,6 +466,14 @@ export default function RecruiterDashboard() {
                                     <a href={match.candidate.linkedinUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /></a>
                                   </Button>
                                 )}
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  title="Download Resume"
+                                  onClick={() => downloadResume(match.candidate.id, match.candidate.name)}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
                                 <Button size="sm" asChild>
                                   <a href={`mailto:${match.candidate.preferredContactEmail}?subject=Regarding ${selectedJob.title} opportunity at ${selectedJob.company}`}>
                                     <Mail className="mr-2 h-4 w-4" /> Contact
