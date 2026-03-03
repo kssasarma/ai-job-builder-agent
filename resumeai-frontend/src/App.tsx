@@ -11,6 +11,7 @@ import { useAuth } from "./context/AuthContext";
 import ResumeDashboard from "./pages/candidate/ResumeDashboard";
 import CandidateProfilePage from "./pages/candidate/CandidateProfilePage";
 import CandidateJobBrowsePage from "./pages/candidate/CandidateJobBrowsePage";
+import CandidateApplicationsPage from "./pages/candidate/CandidateApplicationsPage";
 import RecruiterDashboard from "./pages/recruiter/RecruiterDashboard";
 import RecruiterProfilePage from "./pages/recruiter/RecruiterProfilePage";
 import RecruiterCandidateBrowsePage from "./pages/recruiter/RecruiterCandidateBrowsePage";
@@ -69,6 +70,7 @@ function App() {
                   <Route path="" element={<ResumeDashboard />} />
                   <Route path="profile" element={<CandidateProfilePage />} />
                   <Route path="jobs" element={<CandidateJobBrowsePage />} />
+                  <Route path="applications" element={<CandidateApplicationsPage />} />
                 </Routes>
               </PrivateRoute>
             }

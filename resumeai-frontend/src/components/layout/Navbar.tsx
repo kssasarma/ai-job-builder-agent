@@ -27,6 +27,9 @@ export default function Navbar() {
               <Link to="/candidate/jobs" className="text-sm font-medium hover:underline">
                 Browse Jobs
               </Link>
+              <Link to="/candidate/applications" className="text-sm font-medium hover:underline">
+                My Applications
+              </Link>
               <Link to="/candidate/profile" className="text-sm font-medium hover:underline">
                 Profile
               </Link>

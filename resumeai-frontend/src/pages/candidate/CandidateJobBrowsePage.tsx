@@ -149,9 +149,11 @@ export default function CandidateJobBrowsePage() {
     return "Unlikely";
   };
 
+  const visibleJobs = jobs.filter(job => !appliedJobIds.has(job.id));
+
   const gridClass =
-    jobs.length === 1 ? "grid-cols-1" :
-    jobs.length === 2 ? "grid-cols-2" :
+    visibleJobs.length === 1 ? "grid-cols-1" :
+    visibleJobs.length === 2 ? "grid-cols-2" :
     "grid-cols-3";
 
   return (
@@ -193,13 +195,13 @@ export default function CandidateJobBrowsePage() {
         <div className="flex justify-center p-8">
           <Loader2 className="animate-spin h-8 w-8 text-primary" />
         </div>
-      ) : jobs.length === 0 ? (
+      ) : visibleJobs.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">
           No open jobs found.
         </Card>
       ) : (
         <div className={`grid gap-6 ${gridClass}`}>
-          {jobs.map(job => {
+          {visibleJobs.map(job => {
             const compatResult = compatibilityResults[job.id];
             const isCheckingCompat = compatibilityLoading.has(job.id);
             const isApplied = appliedJobIds.has(job.id);
