@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { PlusCircle, Search, Loader2, Mail, ExternalLink, ChevronDown, ChevronUp, MapPin, Briefcase } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../components/ui/dialog";
+import { PlusCircle, Search, Loader2, Mail, ExternalLink, ChevronDown, ChevronUp, MapPin, Briefcase, Pencil, Trash2 } from "lucide-react";
 import apiClient from "../../lib/axios";
 import { toast } from "sonner";
 import { JobCreateModal } from "../../components/recruiter/JobCreateModal";
@@ -15,14 +16,19 @@ export default function RecruiterDashboard() {
   const [matches, setMatches] = useState<any[]>([]);
   const [matchingStatus, setMatchingStatus] = useState<string | null>(null);
   const [expandedJobIds, setExpandedJobIds] = useState<Set<string>>(new Set());
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchJobs = async () => {
     try {
       const res = await apiClient.get("/recruiter/jobs?size=50&sort=createdAt,desc");
-      // Since it's paginated, jobs are inside the "content" field
       setJobs(res.data.content);
+      return res.data.content as any[];
     } catch (error) {
       toast.error("Failed to load jobs");
+      return [];
     } finally {
       setLoading(false);
     }
@@ -85,6 +91,31 @@ export default function RecruiterDashboard() {
     });
   };
 
+  const handleJobUpdated = async () => {
+    const updated = await fetchJobs();
+    const refreshed = updated.find((j: any) => j.id === selectedJob?.id);
+    if (refreshed) setSelectedJob(refreshed);
+    setDescExpanded(false);
+  };
+
+  const handleDelete = async () => {
+    if (!selectedJob) return;
+    setDeleting(true);
+    try {
+      await apiClient.delete(`/recruiter/jobs/${selectedJob.id}`);
+      toast.success("Job posting deleted.");
+      setSelectedJob(null);
+      setMatches([]);
+      setMatchingStatus(null);
+      setDeleteConfirmOpen(false);
+      fetchJobs();
+    } catch {
+      toast.error("Failed to delete job posting.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 max-w-6xl space-y-8 mt-8">
       <div className="flex justify-between items-center">
@@ -98,6 +129,13 @@ export default function RecruiterDashboard() {
       </div>
 
       <JobCreateModal open={modalOpen} onOpenChange={setModalOpen} onJobCreated={fetchJobs} />
+      <JobCreateModal
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        onJobCreated={fetchJobs}
+        job={selectedJob}
+        onJobUpdated={handleJobUpdated}
+      />
 
       <div className="grid md:grid-cols-12 gap-6">
         {/* Left Column: Job List */}
@@ -114,12 +152,12 @@ export default function RecruiterDashboard() {
               <Card
                 key={job.id}
                 className={`cursor-pointer transition-colors hover:border-primary/50 ${selectedJob?.id === job.id ? 'border-primary shadow-sm' : ''}`}
-                onClick={() => setSelectedJob(job)}
+                onClick={() => { setSelectedJob(job); setDescExpanded(false); setMatches([]); setMatchingStatus(null); }}
               >
                 <CardHeader className="p-4">
                   <div className="flex justify-between items-start">
                     <CardTitle className="text-lg">{job.title}</CardTitle>
-                    <Badge variant={job.status === "ACTIVE" ? "default" : "secondary"} className="text-[10px]">
+                    <Badge variant={job.status === "OPEN" ? "default" : "secondary"} className="text-[10px]">
                       {job.status}
                     </Badge>
                   </div>
@@ -181,11 +219,19 @@ export default function RecruiterDashboard() {
                       <CardTitle>{selectedJob.title}</CardTitle>
                       <CardDescription className="mt-1">{selectedJob.company}</CardDescription>
                     </div>
-                    {selectedJob.status && (
-                      <Badge variant={selectedJob.status === "ACTIVE" ? "default" : "secondary"} className="shrink-0">
-                        {selectedJob.status}
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {selectedJob.status && (
+                        <Badge variant={selectedJob.status === "OPEN" ? "default" : "secondary"}>
+                          {selectedJob.status}
+                        </Badge>
+                      )}
+                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setEditModalOpen(true)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="outline" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteConfirmOpen(true)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-3 mt-2 text-sm text-muted-foreground">
                     {selectedJob.location && (
@@ -206,7 +252,17 @@ export default function RecruiterDashboard() {
                   {selectedJob.description && (
                     <div>
                       <p className="text-sm font-semibold mb-1">Description:</p>
-                      <p className="text-sm text-muted-foreground whitespace-pre-line">{selectedJob.description}</p>
+                      <p className={`text-sm text-muted-foreground whitespace-pre-line ${descExpanded ? "" : "line-clamp-3"}`}>
+                        {selectedJob.description}
+                      </p>
+                      {selectedJob.description.length > 200 && (
+                        <button
+                          onClick={() => setDescExpanded(v => !v)}
+                          className="text-xs text-primary hover:underline mt-1 flex items-center gap-1"
+                        >
+                          {descExpanded ? <><ChevronUp className="h-3 w-3" /> Show less</> : <><ChevronDown className="h-3 w-3" /> See more</>}
+                        </button>
+                      )}
                     </div>
                   )}
                   {selectedJob.requiredSkills?.length > 0 && (
@@ -299,6 +355,24 @@ export default function RecruiterDashboard() {
           )}
         </div>
       </div>
+
+      {/* Delete confirmation */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Delete Job Posting</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{selectedJob?.title}</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</> : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

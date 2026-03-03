@@ -44,7 +44,7 @@ public class CandidateJobController {
     @GetMapping("/{id}")
     public ResponseEntity<JobPostingDto> getJob(@PathVariable UUID id) {
         return jobPostingRepository.findById(id)
-                .filter(job -> "OPEN".equals(job.getStatus()))
+                .filter(job -> "OPEN".equals(job.getStatus()) || "ACTIVE".equals(job.getStatus()))
                 .map(job -> ResponseEntity.ok(JobPostingDto.fromEntity(job)))
                 .orElse(ResponseEntity.notFound().build());
     }

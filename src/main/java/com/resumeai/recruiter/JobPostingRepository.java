@@ -12,7 +12,7 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, UUID> {
 
     @Query(value = """
         SELECT j.* FROM job_postings j
-        WHERE j.status = 'OPEN'
+        WHERE j.status IN ('OPEN', 'ACTIVE')
         AND (
             CAST(:keyword AS TEXT) IS NULL OR
             j.title ILIKE '%' || CAST(:keyword AS TEXT) || '%' OR
@@ -35,7 +35,7 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, UUID> {
         """,
         countQuery = """
         SELECT count(*) FROM job_postings j
-        WHERE j.status = 'OPEN'
+        WHERE j.status IN ('OPEN', 'ACTIVE')
         AND (
             CAST(:keyword AS TEXT) IS NULL OR
             j.title ILIKE '%' || CAST(:keyword AS TEXT) || '%' OR
