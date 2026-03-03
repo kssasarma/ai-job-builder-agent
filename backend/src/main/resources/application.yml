@@ -19,7 +19,7 @@ spring:
     locations: classpath:db/migration
   ai:
     openai:
-      api-key: ${OPENAI_API_KEY}
+      api-key: {OPENAI_API_KEY}
       chat:
         options:
           model: gpt-4o
@@ -48,8 +48,8 @@ app:
     secret: ${JWT_SECRET:verysecretkeythatshouldbechangedinproductionwithatleast32characters}
     expiration: 900000 # 15 minutes
 
-logging:
-  level:
-    root: INFO
-    com.resumeai: DEBUG
-    org.hibernate.SQL: DEBUG
+# logging:
+  # level:
+    # root: INFO
+    # com.resumeai: DEBUG
+    # org.hibernate.SQL: DEBUG
