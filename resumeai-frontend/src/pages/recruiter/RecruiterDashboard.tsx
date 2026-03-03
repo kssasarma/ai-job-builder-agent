@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { PlusCircle, Search, Loader2, Mail, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { PlusCircle, Search, Loader2, Mail, ExternalLink, ChevronDown, ChevronUp, MapPin, Briefcase } from "lucide-react";
 import apiClient from "../../lib/axios";
 import { toast } from "sonner";
 import { JobCreateModal } from "../../components/recruiter/JobCreateModal";
@@ -176,18 +176,49 @@ export default function RecruiterDashboard() {
             <div className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>{selectedJob.title}</CardTitle>
-                  <CardDescription>{selectedJob.company}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="mb-4">
-                    <span className="text-sm font-semibold">Required Skills: </span>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {selectedJob.requiredSkills?.map((s: string) => <Badge key={s} variant="outline">{s}</Badge>)}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <CardTitle>{selectedJob.title}</CardTitle>
+                      <CardDescription className="mt-1">{selectedJob.company}</CardDescription>
                     </div>
+                    {selectedJob.status && (
+                      <Badge variant={selectedJob.status === "ACTIVE" ? "default" : "secondary"} className="shrink-0">
+                        {selectedJob.status}
+                      </Badge>
+                    )}
                   </div>
+                  <div className="flex flex-wrap gap-3 mt-2 text-sm text-muted-foreground">
+                    {selectedJob.location && (
+                      <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{selectedJob.location}</span>
+                    )}
+                    {selectedJob.jobType && (
+                      <span className="flex items-center gap-1"><Briefcase className="h-3 w-3" />{selectedJob.jobType.replace("_", " ")}</span>
+                    )}
+                    {selectedJob.salaryRange && (
+                      <span>{selectedJob.salaryRange}</span>
+                    )}
+                    {(selectedJob.experienceMin != null || selectedJob.experienceMax != null) && (
+                      <span>{selectedJob.experienceMin ?? 0}–{selectedJob.experienceMax ?? "+"} yrs exp</span>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {selectedJob.description && (
+                    <div>
+                      <p className="text-sm font-semibold mb-1">Description:</p>
+                      <p className="text-sm text-muted-foreground whitespace-pre-line">{selectedJob.description}</p>
+                    </div>
+                  )}
+                  {selectedJob.requiredSkills?.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold mb-1">Required Skills:</p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {selectedJob.requiredSkills.map((s: string) => <Badge key={s} variant="outline">{s}</Badge>)}
+                      </div>
+                    </div>
+                  )}
                   <Button onClick={() => handleMatchCandidates(selectedJob.id)} disabled={matchingStatus === "PROCESSING"}>
-                    {matchingStatus === "PROCESSING" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Analyzing Candidates...</> : "Refresh Matches"}
+                    {matchingStatus === "PROCESSING" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Analyzing Candidates...</> : "Find Matching Candidates"}
                   </Button>
                 </CardContent>
               </Card>
