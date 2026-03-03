@@ -118,7 +118,8 @@ public class AiService {
         }
 
         com.resumeai.candidate.ProfileExtractionResponse response = chatClient.prompt()
-                .system(s -> s.text(profileExtractionPromptTemplate).param("resume", resume.getExtractedText()))
+                .system(profileExtractionPromptTemplate)
+                .user(u -> u.text(resume.getExtractedText()))
                 .call()
                 .entity(com.resumeai.candidate.ProfileExtractionResponse.class);
 

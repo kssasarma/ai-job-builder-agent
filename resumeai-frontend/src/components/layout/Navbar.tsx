@@ -23,9 +23,14 @@ export default function Navbar() {
             Dashboard
           </Link>
           {user.role === "CANDIDATE" && (
-            <Link to="/candidate/profile" className="text-sm font-medium hover:underline">
-              Profile
-            </Link>
+            <>
+              <Link to="/candidate/jobs" className="text-sm font-medium hover:underline">
+                Browse Jobs
+              </Link>
+              <Link to="/candidate/profile" className="text-sm font-medium hover:underline">
+                Profile
+              </Link>
+            </>
           )}
           {user.role === "RECRUITER" && (
             <>

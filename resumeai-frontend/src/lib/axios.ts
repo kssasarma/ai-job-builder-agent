@@ -39,9 +39,10 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Skip token refresh for auth endpoints — let login/register errors propagate to the caller
-    const isAuthEndpoint = originalRequest.url?.includes("/auth/");
-    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
+    // Skip token refresh for login/register/refresh/logout — let those errors propagate to the caller.
+    // /auth/me is intentionally excluded so an expired token is refreshed transparently on page load.
+    const isSkippedAuthEndpoint = /\/auth\/(login|register|refresh|logout)/.test(originalRequest.url ?? "");
+    if (error.response?.status === 401 && !originalRequest._retry && !isSkippedAuthEndpoint) {
       if (isRefreshing) {
         return new Promise(function(resolve, reject) {
           failedQueue.push({ resolve, reject });

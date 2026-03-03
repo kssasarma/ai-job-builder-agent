@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import apiClient from "../../lib/axios";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -7,10 +8,26 @@ import { Button } from "../../components/ui/button";
 import { ExternalLink, Mail, Loader2 } from "lucide-react";
 
 export default function RecruiterCandidateBrowsePage() {
+  const location = useLocation();
   const [candidates, setCandidates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedSkills, setExpandedSkills] = useState<Set<string>>(new Set());
+
+  const toggleSkills = (candidateId: string) => {
+    setExpandedSkills(prev => {
+      const next = new Set(prev);
+      if (next.has(candidateId)) {
+        next.delete(candidateId);
+      } else {
+        next.add(candidateId);
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
+    setLoading(true);
+    setExpandedSkills(new Set());
     const fetchCandidates = async () => {
       try {
         const res = await apiClient.get("/recruiter/candidates?size=50");
@@ -22,7 +39,7 @@ export default function RecruiterCandidateBrowsePage() {
       }
     };
     fetchCandidates();
-  }, []);
+  }, [location.key]);
 
   return (
     <div className="container mx-auto p-6 max-w-6xl space-y-8 mt-8">
@@ -38,7 +55,7 @@ export default function RecruiterCandidateBrowsePage() {
           No candidates found.
         </Card>
       ) : (
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className={`grid gap-6 ${candidates.length === 1 ? "grid-cols-1" : candidates.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
           {candidates.map(candidate => (
             <Card key={candidate.candidateId} className="flex flex-col">
               <CardHeader className="pb-3 border-b border-border/40 bg-muted/20">
@@ -47,11 +64,6 @@ export default function RecruiterCandidateBrowsePage() {
                     <CardTitle className="text-xl">{candidate.name || `Candidate ${candidate.candidateId.substring(0,8)}`}</CardTitle>
                     <p className="text-sm font-medium text-muted-foreground mt-1">{candidate.headline || "Professional"}</p>
                   </div>
-                  {candidate.latestAtsScore !== null && (
-                    <Badge variant="outline" className="font-mono text-xs">
-                      General ATS Score: {candidate.latestAtsScore}
-                    </Badge>
-                  )}
                 </div>
               </CardHeader>
               <CardContent className="pt-4 flex-1 flex flex-col justify-between space-y-4">
@@ -66,11 +78,23 @@ export default function RecruiterCandidateBrowsePage() {
                   <div>
                     <p className="text-sm font-semibold mb-2">Skills:</p>
                     <div className="flex flex-wrap gap-1">
-                      {candidate.skills.slice(0, 8).map((s: string) => (
+                      {(expandedSkills.has(candidate.candidateId)
+                        ? candidate.skills
+                        : candidate.skills.slice(0, 8)
+                      ).map((s: string) => (
                         <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
                       ))}
                       {candidate.skills.length > 8 && (
-                        <Badge variant="outline" className="text-xs">+{candidate.skills.length - 8} more</Badge>
+                        <button
+                          onClick={() => toggleSkills(candidate.candidateId)}
+                          className="inline-flex items-center"
+                        >
+                          <Badge variant="outline" className="text-xs cursor-pointer hover:bg-accent">
+                            {expandedSkills.has(candidate.candidateId)
+                              ? "Show less"
+                              : `+${candidate.skills.length - 8} more`}
+                          </Badge>
+                        </button>
                       )}
                     </div>
                   </div>

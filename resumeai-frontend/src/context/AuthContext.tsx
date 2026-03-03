@@ -25,32 +25,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const initAuth = async () => {
-      const storedToken = localStorage.getItem("token");
-      const storedUser = localStorage.getItem("user");
+    const storedToken = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
 
-      if (storedToken && storedUser) {
-        try {
-          // Validate token by fetching current user info
-          // Intentionally do not clear localStorage aggressively here if it fails
-          // because it might be a 401 being actively refreshed by interceptor
-          const response = await apiClient.get("/auth/me");
-          setToken(storedToken);
-          setUser(response.data);
-        } catch (error: any) {
-          if (error.response?.status !== 401) {
-            localStorage.removeItem("token");
-            localStorage.removeItem("refreshToken");
-            localStorage.removeItem("user");
-            setToken(null);
-            setUser(null);
-          }
-        }
+    if (storedToken && storedUser) {
+      try {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+      } catch {
+        localStorage.removeItem("token");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("user");
       }
-      setIsLoading(false);
-    };
-
-    initAuth();
+    }
+    setIsLoading(false);
   }, []);
 
   const login = (newToken: string, newRefreshToken: string, newUser: User) => {
