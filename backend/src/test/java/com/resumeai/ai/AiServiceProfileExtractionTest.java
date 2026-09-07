@@ -9,6 +9,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.core.io.Resource;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,6 +18,7 @@ import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -52,7 +54,12 @@ public class AiServiceProfileExtractionTest {
                 candidateProfileRepository,
                 mock(com.resumeai.recruiter.CandidateMatchRepository.class),
                 profileSuggestionRepository,
-                mock(com.resumeai.common.AsyncOperationRepository.class)
+                mock(com.resumeai.common.AsyncOperationRepository.class),
+                mock(EmbeddingService.class),
+                mock(AiDecisionLogRepository.class),
+                mock(com.resumeai.recruiter.InterviewKitRepository.class),
+                mock(MockInterviewRepositories.class),
+                mock(org.springframework.messaging.simp.SimpMessagingTemplate.class)
         );
         aiService.setSelf(aiService);
     }
@@ -70,10 +77,12 @@ public class AiServiceProfileExtractionTest {
         resume.setCandidate(profile);
 
         when(resumeRepository.findById(resumeId)).thenReturn(Optional.of(resume));
+        when(candidateProfileRepository.findById(profile.getId())).thenReturn(Optional.of(profile));
 
         ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
         when(chatClient.prompt()).thenReturn(requestSpec);
-        when(requestSpec.system(any(Consumer.class))).thenReturn(requestSpec);
+        when(requestSpec.system(nullable(Resource.class))).thenReturn(requestSpec);
+        when(requestSpec.user(any(Consumer.class))).thenReturn(requestSpec);
 
         ChatClient.CallResponseSpec callResponseSpec = mock(ChatClient.CallResponseSpec.class);
         when(requestSpec.call()).thenReturn(callResponseSpec);
@@ -121,10 +130,12 @@ public class AiServiceProfileExtractionTest {
         resume.setCandidate(profile);
 
         when(resumeRepository.findById(resumeId)).thenReturn(Optional.of(resume));
+        when(candidateProfileRepository.findById(profile.getId())).thenReturn(Optional.of(profile));
 
         ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
         when(chatClient.prompt()).thenReturn(requestSpec);
-        when(requestSpec.system(any(Consumer.class))).thenReturn(requestSpec);
+        when(requestSpec.system(nullable(Resource.class))).thenReturn(requestSpec);
+        when(requestSpec.user(any(Consumer.class))).thenReturn(requestSpec);
 
         ChatClient.CallResponseSpec callResponseSpec = mock(ChatClient.CallResponseSpec.class);
         when(requestSpec.call()).thenReturn(callResponseSpec);

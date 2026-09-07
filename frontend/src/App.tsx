@@ -12,6 +12,7 @@ import ResumeDashboard from "./pages/candidate/ResumeDashboard";
 import CandidateProfilePage from "./pages/candidate/CandidateProfilePage";
 import CandidateJobBrowsePage from "./pages/candidate/CandidateJobBrowsePage";
 import CandidateApplicationsPage from "./pages/candidate/CandidateApplicationsPage";
+import MockInterviewPage from "./pages/candidate/MockInterviewPage";
 import RecruiterDashboard from "./pages/recruiter/RecruiterDashboard";
 import RecruiterProfilePage from "./pages/recruiter/RecruiterProfilePage";
 import RecruiterCandidateBrowsePage from "./pages/recruiter/RecruiterCandidateBrowsePage";
@@ -71,6 +72,7 @@ function App() {
                   <Route path="profile" element={<CandidateProfilePage />} />
                   <Route path="jobs" element={<CandidateJobBrowsePage />} />
                   <Route path="applications" element={<CandidateApplicationsPage />} />
+                  <Route path="mock-interview/:historyId" element={<MockInterviewPage />} />
                 </Routes>
               </PrivateRoute>
             }

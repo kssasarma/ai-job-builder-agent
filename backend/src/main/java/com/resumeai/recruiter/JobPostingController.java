@@ -20,15 +20,24 @@ public class JobPostingController {
     private final RecruiterProfileRepository recruiterProfileRepository;
 
     private final com.resumeai.ai.AiService aiService;
+    private final com.resumeai.ai.EmbeddingService embeddingService;
     private final CandidateMatchRepository candidateMatchRepository;
     private final JobApplicationRepository jobApplicationRepository;
 
-    public JobPostingController(JobPostingRepository jobPostingRepository, RecruiterProfileRepository recruiterProfileRepository, com.resumeai.ai.AiService aiService, CandidateMatchRepository candidateMatchRepository, JobApplicationRepository jobApplicationRepository) {
+    public JobPostingController(JobPostingRepository jobPostingRepository, RecruiterProfileRepository recruiterProfileRepository, com.resumeai.ai.AiService aiService, com.resumeai.ai.EmbeddingService embeddingService, CandidateMatchRepository candidateMatchRepository, JobApplicationRepository jobApplicationRepository) {
         this.jobPostingRepository = jobPostingRepository;
         this.recruiterProfileRepository = recruiterProfileRepository;
         this.aiService = aiService;
+        this.embeddingService = embeddingService;
         this.candidateMatchRepository = candidateMatchRepository;
         this.jobApplicationRepository = jobApplicationRepository;
+    }
+
+    private void embedJobPostingAsync(JobPosting job) {
+        String text = "Title: " + job.getTitle()
+                + "\nRequirements: " + (job.getRequiredSkills() != null ? String.join(", ", job.getRequiredSkills()) : "")
+                + "\nDescription: " + job.getDescription();
+        embeddingService.embedJobPostingAsync(job.getId(), text);
     }
 
     private RecruiterProfile getRecruiterProfile(UUID userId) {
@@ -47,7 +56,9 @@ public class JobPostingController {
         updateJobFromRequest(job, request);
         if (request.status() != null) job.setStatus(request.status());
 
-        return ResponseEntity.ok(JobPostingDto.fromEntity(jobPostingRepository.save(job)));
+        JobPosting saved = jobPostingRepository.save(job);
+        embedJobPostingAsync(saved);
+        return ResponseEntity.ok(JobPostingDto.fromEntity(saved));
     }
 
     @GetMapping
@@ -85,7 +96,9 @@ public class JobPostingController {
         updateJobFromRequest(job, request);
         if (request.status() != null) job.setStatus(request.status());
 
-        return ResponseEntity.ok(JobPostingDto.fromEntity(jobPostingRepository.save(job)));
+        JobPosting saved = jobPostingRepository.save(job);
+        embedJobPostingAsync(saved);
+        return ResponseEntity.ok(JobPostingDto.fromEntity(saved));
     }
 
     @PatchMapping("/{id}/status")

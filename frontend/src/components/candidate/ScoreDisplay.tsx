@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
+import { ExplainabilityPanel } from "../shared/ExplainabilityPanel";
 import {
   BarChart,
   Bar,
@@ -19,7 +20,7 @@ interface ScoreData {
   educationSummary: string;
 }
 
-export function ScoreDisplay({ data }: { data: ScoreData }) {
+export function ScoreDisplay({ data, resumeId }: { data: ScoreData; resumeId?: string }) {
   const getScoreColor = (score: number) => {
     if (score >= 75) return "text-green-500";
     if (score >= 50) return "text-amber-500";
@@ -54,6 +55,11 @@ export function ScoreDisplay({ data }: { data: ScoreData }) {
             </div>
           </div>
         </CardContent>
+        {resumeId && (
+          <CardContent className="pt-0">
+            <ExplainabilityPanel decisionType="SCORING" referenceId={resumeId} />
+          </CardContent>
+        )}
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

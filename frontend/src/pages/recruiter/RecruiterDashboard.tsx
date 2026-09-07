@@ -1,13 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-import { PlusCircle, Search, Loader2, Mail, ExternalLink, ChevronDown, ChevronUp, MapPin, Briefcase, Pencil, Trash2, Users, Download } from "lucide-react";
+import { PlusCircle, Search, Loader2, Mail, ExternalLink, ChevronDown, ChevronUp, MapPin, Briefcase, Pencil, Trash2, Users, Download, ClipboardList } from "lucide-react";
 import apiClient from "../../lib/axios";
+import { useOperationStatus, type OperationStatusMessage } from "../../lib/websocket";
 import { toast } from "sonner";
 import { JobCreateModal } from "../../components/recruiter/JobCreateModal";
+import { ExplainabilityPanel } from "../../components/shared/ExplainabilityPanel";
 
 const APPLICATION_STATUSES = [
   { value: "APPLIED", label: "Applied", color: "bg-blue-500/10 text-blue-700" },
@@ -32,6 +34,8 @@ export default function RecruiterDashboard() {
 
   const [applicants, setApplicants] = useState<any[]>([]);
   const [applicantsLoading, setApplicantsLoading] = useState(false);
+  const [interviewKits, setInterviewKits] = useState<Record<string, any>>({});
+  const [interviewKitLoading, setInterviewKitLoading] = useState<Record<string, boolean>>({});
 
   const fetchJobs = async () => {
     try {
@@ -75,34 +79,47 @@ export default function RecruiterDashboard() {
     setSelectedJob(jobs.find(j => j.id === jobId));
     setMatchingStatus("PROCESSING");
     setMatches([]);
+    setInterviewKits({});
 
     try {
       await apiClient.post(`/recruiter/jobs/${jobId}/find-candidates`);
-      pollMatchingStatus(jobId);
     } catch (error) {
       toast.error("Failed to start matching process");
       setMatchingStatus(null);
     }
   };
 
-  const pollMatchingStatus = (jobId: string) => {
-    const interval = setInterval(async () => {
+  // Pushed by the backend over WebSocket the moment the matching run finishes —
+  // no more polling /matches on an interval while a recruiter waits.
+  const handleMatchingStatus = useCallback(async (payload: OperationStatusMessage) => {
+    if (payload.type !== "MATCHING" || !selectedJob) return;
+    if (payload.status === "COMPLETED") {
       try {
-        const res = await apiClient.get(`/recruiter/jobs/${jobId}/matches`);
-        if (res.data.status === "COMPLETED") {
-          setMatches(res.data.matches);
-          setMatchingStatus("COMPLETED");
-          clearInterval(interval);
-          toast.success("Matching complete!");
-        } else if (res.data.status && res.data.status.startsWith("FAILED")) {
-          toast.error("Matching failed: " + res.data.status);
-          setMatchingStatus(null);
-          clearInterval(interval);
-        }
+        const res = await apiClient.get(`/recruiter/jobs/${selectedJob.id}/matches`);
+        setMatches(res.data.matches);
+        setMatchingStatus("COMPLETED");
+        toast.success("Matching complete!");
       } catch (error) {
         console.error(error);
       }
-    }, 3000);
+    } else if (payload.status?.startsWith("FAILED")) {
+      toast.error("Matching failed: " + payload.status);
+      setMatchingStatus(null);
+    }
+  }, [selectedJob]);
+
+  useOperationStatus(matchingStatus === "PROCESSING" ? selectedJob?.id ?? null : null, handleMatchingStatus);
+
+  const generateInterviewKit = async (matchId: string) => {
+    setInterviewKitLoading(prev => ({ ...prev, [matchId]: true }));
+    try {
+      const res = await apiClient.post(`/recruiter/matches/${matchId}/interview-kit`);
+      setInterviewKits(prev => ({ ...prev, [matchId]: res.data }));
+    } catch {
+      toast.error("Failed to generate interview kit.");
+    } finally {
+      setInterviewKitLoading(prev => ({ ...prev, [matchId]: false }));
+    }
   };
 
   const getScoreColor = (score: number) => {
@@ -442,6 +459,9 @@ export default function RecruiterDashboard() {
               {matchingStatus === "COMPLETED" && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Top Matched Candidates ({matches.length})</h3>
+                  {matches.length > 0 && (
+                    <ExplainabilityPanel decisionType="MATCHING" referenceId={selectedJob.id} />
+                  )}
                   {matches.length === 0 ? (
                     <p className="text-muted-foreground">No matching candidates found that are open to opportunities.</p>
                   ) : (
@@ -500,6 +520,34 @@ export default function RecruiterDashboard() {
                                   <div className="flex flex-wrap gap-1">
                                     {match.identifiedGaps.map((s: string) => <Badge key={s} variant="destructive" className="bg-red-500/10 text-red-700 hover:bg-red-500/20">{s}</Badge>)}
                                   </div>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="mt-4 pt-4 border-t">
+                              {!interviewKits[match.id] ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => generateInterviewKit(match.id)}
+                                  disabled={interviewKitLoading[match.id]}
+                                >
+                                  {interviewKitLoading[match.id] ? (
+                                    <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Generating interview kit...</>
+                                  ) : (
+                                    <><ClipboardList className="mr-2 h-3.5 w-3.5" /> Generate interview kit</>
+                                  )}
+                                </Button>
+                              ) : (
+                                <div className="space-y-3">
+                                  <p className="text-xs font-semibold uppercase text-muted-foreground">Interview kit — targets this candidate's gaps</p>
+                                  {interviewKits[match.id].questions.map((q: any, idx: number) => (
+                                    <div key={idx} className="bg-muted/40 rounded-md p-3 text-sm space-y-1">
+                                      <p className="font-medium">{q.question}</p>
+                                      <p className="text-xs text-muted-foreground">Targets: {q.targetSkill}</p>
+                                      <p className="text-xs text-muted-foreground italic">What good looks like: {q.whatGoodLooksLike}</p>
+                                    </div>
+                                  ))}
                                 </div>
                               )}
                             </div>

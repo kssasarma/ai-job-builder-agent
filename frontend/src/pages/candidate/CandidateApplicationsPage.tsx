@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import apiClient from "../../lib/axios";
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Card, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Loader2, MapPin, Briefcase } from "lucide-react";
 

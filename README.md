@@ -40,6 +40,13 @@ docker-compose up -d
 ```
 *The database name is `resumeai`, user `postgres`, password `postgres`.* Flyway migrations will run automatically on application startup.
 
+> **pgvector required.** Vector-first candidate matching (see below) stores resume/job
+> embeddings in a `vector` column, so the Postgres server needs the `pgvector` extension
+> installed. If your `docker-compose.yml` uses the plain `postgres:16` image, switch it to
+> `pgvector/pgvector:pg16` (drop-in compatible, same env vars) — the `V10__embeddings.sql`
+> migration runs `CREATE EXTENSION IF NOT EXISTS vector`, which fails on a server that
+> doesn't have the extension available.
+
 ### 2. Backend Configuration
 1. Copy `.env.example` to `.env` in the root directory:
    ```bash
@@ -88,4 +95,15 @@ docker-compose up -d
 - `POST /api/candidate/resume/{id}/score` - Trigger async ATS scoring
 - `POST /api/candidate/resume/{id}/analyze-compatibility` - Compare resume to JD
 - `POST /api/recruiter/jobs` - Manage Job Postings
-- `POST /api/recruiter/jobs/{id}/find-candidates` - Trigger async candidate matching
+- `POST /api/recruiter/jobs/{id}/find-candidates` - Trigger async candidate matching (vector pre-filter + LLM re-rank on the top candidates only)
+- `POST/GET /api/recruiter/matches/{candidateMatchId}/interview-kit` - Auto-generated, gap-targeted interview questions for one shortlisted candidate
+- `POST /api/candidate/mock-interview/start` - Start a gap-aware practice interview from an AMBER-tier compatibility analysis
+- `POST /api/candidate/mock-interview/questions/{id}/answer` - Submit a practice answer and get AI-scored feedback
+- `GET /api/ai/decisions/{decisionType}/{referenceId}` - The AI decision ledger behind one score/match/generated document ("why this result?")
+- `POST /api/ai/review-requests` - Flag an AI result for human review
+
+## Platform Strategy
+`docs/PLATFORM_STRATEGY.md` has the fuller picture: what's built, the roadmap this PR
+implements (P0/foundation), and what's next (P1/P2). Real-time status pushes over
+`/ws` (STOMP) have replaced polling for resume scoring, profile extraction, and
+candidate matching — see `WebSocketConfig` and `frontend/src/lib/websocket.ts`.

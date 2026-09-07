@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { FileUpload } from "../../components/candidate/FileUpload";
 import { ScoreDisplay } from "../../components/candidate/ScoreDisplay";
 import apiClient from "../../lib/axios";
+import { useOperationStatus, type OperationStatusMessage } from "../../lib/websocket";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Loader2 } from "lucide-react";
@@ -40,40 +41,32 @@ export default function ResumeDashboard() {
     }
   };
 
-  // Poll for status
-  useEffect(() => {
-    let interval: number;
+  // Pushed by the backend over WebSocket the moment scoring finishes — no more
+  // polling getScoringStatus() on an interval and waiting up to 3s for an update.
+  const handleOperationStatus = useCallback(async (payload: OperationStatusMessage) => {
+    if (payload.type !== "SCORING" || !currentResumeId) return;
 
-    if (scoringStatus === "PROCESSING" && currentResumeId) {
-      interval = setInterval(async () => {
-        try {
-          const res = await apiClient.get(`/candidate/resume/${currentResumeId}/score/status`);
-
-          if (res.data.status === "COMPLETED") {
-            setScoreData(res.data.result);
-            setScoringStatus("COMPLETED");
-            setLoading(false);
-            toast.success("Analysis complete!");
-            if (res.data.profileUpdated) {
-              toast.success("Profile updated as per the resume.");
-            }
-            clearInterval(interval);
-          } else if (res.data.status.startsWith("FAILED")) {
-            toast.error(res.data.status);
-            setScoringStatus("FAILED");
-            setLoading(false);
-            clearInterval(interval);
-          }
-        } catch (error) {
-          console.error("Polling error", error);
+    if (payload.status === "COMPLETED") {
+      try {
+        const res = await apiClient.get(`/candidate/resume/${currentResumeId}/score/status`);
+        setScoreData(res.data.result);
+        setScoringStatus("COMPLETED");
+        setLoading(false);
+        toast.success("Analysis complete!");
+        if (res.data.profileUpdated) {
+          toast.success("Profile updated as per the resume.");
         }
-      }, 3000); // poll every 3 seconds
+      } catch (error) {
+        console.error("Failed to fetch completed score", error);
+      }
+    } else if (payload.status?.startsWith("FAILED")) {
+      toast.error(payload.status);
+      setScoringStatus("FAILED");
+      setLoading(false);
     }
+  }, [currentResumeId]);
 
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [scoringStatus, currentResumeId]);
+  useOperationStatus(scoringStatus === "PROCESSING" ? currentResumeId : null, handleOperationStatus);
 
   useEffect(() => {
     // Fetch latest primary resume on load
@@ -123,7 +116,7 @@ export default function ResumeDashboard() {
 
       {scoreData && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <ScoreDisplay data={scoreData} />
+          <ScoreDisplay data={scoreData} resumeId={currentResumeId ?? undefined} />
 
           {currentResumeId && (
             <div className="mt-12 pt-8 border-t">
