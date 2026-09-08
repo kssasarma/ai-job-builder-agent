@@ -24,6 +24,9 @@ spring:
         options:
           model: gpt-4o
           temperature: 0.3
+      embedding:
+        options:
+          model: text-embedding-3-small # 1536 dims — must match the `vector(1536)` migration columns
   security:
     oauth2:
       client:

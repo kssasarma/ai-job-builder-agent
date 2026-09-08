@@ -1,22 +1,37 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
-import { Loader2, AlertTriangle, XCircle, CheckCircle, RefreshCcw } from "lucide-react";
+import { Loader2, AlertTriangle, XCircle, CheckCircle, RefreshCcw, MessageCircleQuestion, GraduationCap } from "lucide-react";
 import apiClient from "../../lib/axios";
 import { toast } from "sonner";
+import { ExplainabilityPanel } from "../shared/ExplainabilityPanel";
 
 interface TailoringUIProps {
   resumeId: string;
 }
 
 export default function TailoringUI({ resumeId }: TailoringUIProps) {
+  const navigate = useNavigate();
   const [jobDescription, setJobDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<any>(null);
   const [gapAnalysis, setGapAnalysis] = useState<any>(null);
   const [tailoringResult, setTailoringResult] = useState<any>(null);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [learnedSkills, setLearnedSkills] = useState<Set<string>>(new Set());
+
+  const markSkillLearned = async (skill: string) => {
+    if (!analysis) return;
+    try {
+      await apiClient.post(`/candidate/tailoring/${analysis.historyId}/learning-progress`, { skill });
+      setLearnedSkills(prev => new Set(prev).add(skill));
+      toast.success(`Marked "${skill}" as learned.`);
+    } catch {
+      toast.error("Couldn't save that.");
+    }
+  };
 
   const handleAnalyze = async () => {
     if (!jobDescription.trim()) return toast.error("Please enter a job description");
@@ -110,6 +125,7 @@ export default function TailoringUI({ resumeId }: TailoringUIProps) {
                 <Button onClick={handleTailor} disabled={loadingAction === "tailoring"} className="w-full sm:w-auto">
                   {loadingAction === "tailoring" ? <><RefreshCcw className="mr-2 h-4 w-4 animate-spin" /> Tailoring...</> : "Tailor My Resume"}
                 </Button>
+                <ExplainabilityPanel decisionType="COMPATIBILITY" referenceId={analysis.historyId} />
               </CardContent>
             </Card>
           )}
@@ -156,11 +172,29 @@ export default function TailoringUI({ resumeId }: TailoringUIProps) {
                               {item.projectIdeas.map((p: string, i: number) => <li key={i}>{p}</li>)}
                             </ul>
                           </div>
+                          {learnedSkills.has(item.skill) ? (
+                            <Badge className="bg-green-500/10 text-green-700 hover:bg-green-500/20 border-green-500/30">
+                              <GraduationCap className="mr-1.5 h-3 w-3" /> Learned
+                            </Badge>
+                          ) : (
+                            <Button size="sm" variant="outline" onClick={() => markSkillLearned(item.skill)}>
+                              <GraduationCap className="mr-1.5 h-3.5 w-3.5" /> Mark as learned
+                            </Button>
+                          )}
                         </CardContent>
                       </Card>
                     ))}
                   </div>
                 )}
+
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/candidate/mock-interview/${analysis.historyId}`)}
+                >
+                  <MessageCircleQuestion className="mr-2 h-4 w-4" /> Practice interview questions for these gaps
+                </Button>
+
+                <ExplainabilityPanel decisionType="COMPATIBILITY" referenceId={analysis.historyId} />
               </CardContent>
             </Card>
           )}
@@ -175,10 +209,11 @@ export default function TailoringUI({ resumeId }: TailoringUIProps) {
                 </div>
                 <CardDescription>{analysis.detailedReasoning}</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
                   Your profile has significant gaps compared to the requirements. We recommend focusing on roles more closely aligned with your current experience level and skill set.
                 </p>
+                <ExplainabilityPanel decisionType="COMPATIBILITY" referenceId={analysis.historyId} />
               </CardContent>
             </Card>
           )}
@@ -215,6 +250,8 @@ export default function TailoringUI({ resumeId }: TailoringUIProps) {
                 ))}
               </div>
             </div>
+
+            <ExplainabilityPanel decisionType="TAILORING" referenceId={analysis.historyId} />
           </CardContent>
         </Card>
       )}

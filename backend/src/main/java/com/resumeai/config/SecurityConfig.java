@@ -34,7 +34,7 @@ public class SecurityConfig {
             .cors(Customizer.withDefaults())
             .csrf(csrf -> csrf.disable()) // Disable CSRF for development/API simplicity
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/api/error-test", "/error", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .requestMatchers("/api/auth/**", "/api/error-test", "/error", "/swagger-ui/**", "/v3/api-docs/**", "/ws/**").permitAll()
                 .requestMatchers("/api/candidate/**").hasRole("CANDIDATE")
                 .requestMatchers("/api/recruiter/**").hasRole("RECRUITER")
                 .anyRequest().authenticated()

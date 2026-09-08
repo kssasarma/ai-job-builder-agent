@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface TailoringHistoryRepository extends JpaRepository<TailoringHistory, UUID> {
     List<TailoringHistory> findByResumeIdOrderByCreatedAtDesc(UUID resumeId);
+    List<TailoringHistory> findByResumeCandidateIdOrderByCreatedAtDesc(UUID candidateId);
 }

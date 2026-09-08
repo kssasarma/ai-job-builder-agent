@@ -11,6 +11,7 @@ public record CandidateDto(
         String linkedinUrl,
         String preferredContactEmail,
         Integer latestAtsScore,
-        String experienceSummary
+        String experienceSummary,
+        boolean anonymized
 ) {
 }

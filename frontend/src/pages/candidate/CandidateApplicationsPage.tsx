@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import apiClient from "../../lib/axios";
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Card, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Loader2, MapPin, Briefcase } from "lucide-react";
+import { RateButton } from "../../components/shared/RateButton";
 
 interface ApplicationSummary {
   applicationId: string;
@@ -92,10 +93,13 @@ export default function CandidateApplicationsPage() {
                 </div>
 
                 {/* Right: status badge */}
-                <div className="shrink-0">
+                <div className="shrink-0 flex flex-col items-end gap-2">
                   <Badge variant="outline" className={`text-sm font-semibold px-3 py-1 ${className}`}>
                     {label}
                   </Badge>
+                  {(app.status === "SELECTED" || app.status === "REJECTED") && (
+                    <RateButton endpoint="/candidate/ratings" jobApplicationId={app.applicationId} label="Rate this employer" />
+                  )}
                 </div>
               </Card>
             );

@@ -13,6 +13,9 @@ public record CandidateProfileDto(
         Boolean openToOpportunities,
         List<String> skills,
         String experienceSummary,
+        Boolean aiConsent,
+        Boolean anonymizedDiscovery,
+        List<String> verifiedSkills,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -27,6 +30,9 @@ public record CandidateProfileDto(
                 entity.getOpenToOpportunities(),
                 entity.getSkills(),
                 entity.getExperienceSummary(),
+                entity.getAiConsent(),
+                entity.getAnonymizedDiscovery(),
+                entity.getVerifiedSkills(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );

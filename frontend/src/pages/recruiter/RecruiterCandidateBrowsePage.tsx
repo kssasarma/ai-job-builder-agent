@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { ExternalLink, Mail, Loader2, Download } from "lucide-react";
+import { ExternalLink, Mail, Loader2, Download, EyeOff, Send } from "lucide-react";
 
 export default function RecruiterCandidateBrowsePage() {
   const location = useLocation();
@@ -23,6 +23,15 @@ export default function RecruiterCandidateBrowsePage() {
       }
       return next;
     });
+  };
+
+  const requestReveal = async (candidateId: string) => {
+    try {
+      await apiClient.post(`/recruiter/candidates/${candidateId}/reveal-request`);
+      toast.success("Reveal request sent — the candidate will need to approve it.");
+    } catch {
+      toast.error("Couldn't send the reveal request.");
+    }
   };
 
   const downloadResume = async (candidateId: string, candidateName?: string) => {
@@ -77,7 +86,14 @@ export default function RecruiterCandidateBrowsePage() {
               <CardHeader className="pb-3 border-b border-border/40 bg-muted/20">
                 <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle className="text-xl">{candidate.name || `Candidate ${candidate.candidateId.substring(0,8)}`}</CardTitle>
+                    <CardTitle className="text-xl flex items-center gap-2">
+                      {candidate.name || `Candidate ${candidate.candidateId.substring(0,8)}`}
+                      {candidate.anonymized && (
+                        <Badge variant="outline" className="text-[10px] font-normal gap-1">
+                          <EyeOff className="h-2.5 w-2.5" /> Anonymized
+                        </Badge>
+                      )}
+                    </CardTitle>
                     <p className="text-sm font-medium text-muted-foreground mt-1">{candidate.headline || "Professional"}</p>
                   </div>
                 </div>
@@ -137,6 +153,11 @@ export default function RecruiterCandidateBrowsePage() {
                       <a href={`mailto:${candidate.preferredContactEmail}`}>
                         <Mail className="mr-2 h-4 w-4" /> Contact
                       </a>
+                    </Button>
+                  )}
+                  {candidate.anonymized && (
+                    <Button size="sm" variant="secondary" onClick={() => requestReveal(candidate.candidateId)}>
+                      <Send className="mr-2 h-4 w-4" /> Request full profile
                     </Button>
                   )}
                 </div>

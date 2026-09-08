@@ -23,6 +23,7 @@ public class ResumeService {
     private final ResumeRepository resumeRepository;
     private final CandidateProfileRepository candidateProfileRepository;
     private final com.resumeai.ai.AiService aiService;
+    private final com.resumeai.ai.EmbeddingService embeddingService;
 
     @Value("${app.upload.dir:uploads/resumes}")
     private String uploadDir;
@@ -38,10 +39,11 @@ public class ResumeService {
     }
 
     public ResumeService(ResumeRepository resumeRepository, CandidateProfileRepository candidateProfileRepository,
-                         com.resumeai.ai.AiService aiService) {
+                         com.resumeai.ai.AiService aiService, com.resumeai.ai.EmbeddingService embeddingService) {
         this.resumeRepository = resumeRepository;
         this.candidateProfileRepository = candidateProfileRepository;
         this.aiService = aiService;
+        this.embeddingService = embeddingService;
     }
 
     @Transactional
@@ -107,6 +109,7 @@ public class ResumeService {
                 @Override
                 public void afterCommit() {
                     aiService.extractProfileAsync(resume.getId());
+                    embeddingService.embedResumeAsync(resume.getId(), extractedText);
                 }
             }
         );

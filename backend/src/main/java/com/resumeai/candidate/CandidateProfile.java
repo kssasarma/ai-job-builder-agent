@@ -53,6 +53,16 @@ public class CandidateProfile {
     @Column(name = "education_summary", columnDefinition = "TEXT")
     private String educationSummary;
 
+    @Column(name = "ai_consent")
+    private Boolean aiConsent = true;
+
+    @Column(name = "anonymized_discovery")
+    private Boolean anonymizedDiscovery = false;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "verified_skills", columnDefinition = "text[]")
+    private List<String> verifiedSkills;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -89,6 +99,12 @@ public class CandidateProfile {
     public void setExperienceSummary(String experienceSummary) { this.experienceSummary = experienceSummary; }
     public String getEducationSummary() { return educationSummary; }
     public void setEducationSummary(String educationSummary) { this.educationSummary = educationSummary; }
+    public Boolean getAiConsent() { return aiConsent; }
+    public void setAiConsent(Boolean aiConsent) { this.aiConsent = aiConsent; }
+    public Boolean getAnonymizedDiscovery() { return anonymizedDiscovery; }
+    public void setAnonymizedDiscovery(Boolean anonymizedDiscovery) { this.anonymizedDiscovery = anonymizedDiscovery; }
+    public List<String> getVerifiedSkills() { return verifiedSkills; }
+    public void setVerifiedSkills(List<String> verifiedSkills) { this.verifiedSkills = verifiedSkills; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

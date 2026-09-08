@@ -4,6 +4,8 @@ import com.resumeai.auth.CustomUserDetails;
 import com.resumeai.recruiter.JobApplication;
 import com.resumeai.recruiter.JobApplicationDto;
 import com.resumeai.recruiter.JobApplicationRepository;
+import com.resumeai.recruiter.JobApplicationStatusHistory;
+import com.resumeai.recruiter.JobApplicationStatusHistoryRepository;
 import com.resumeai.recruiter.JobPosting;
 import com.resumeai.recruiter.JobPostingDto;
 import com.resumeai.recruiter.JobPostingRepository;
@@ -25,15 +27,18 @@ public class CandidateJobController {
 
     private final JobPostingRepository jobPostingRepository;
     private final JobApplicationRepository jobApplicationRepository;
+    private final JobApplicationStatusHistoryRepository jobApplicationStatusHistoryRepository;
     private final CandidateProfileRepository candidateProfileRepository;
     private final AiService aiService;
 
     public CandidateJobController(JobPostingRepository jobPostingRepository,
                                    JobApplicationRepository jobApplicationRepository,
+                                   JobApplicationStatusHistoryRepository jobApplicationStatusHistoryRepository,
                                    CandidateProfileRepository candidateProfileRepository,
                                    AiService aiService) {
         this.jobPostingRepository = jobPostingRepository;
         this.jobApplicationRepository = jobApplicationRepository;
+        this.jobApplicationStatusHistoryRepository = jobApplicationStatusHistoryRepository;
         this.candidateProfileRepository = candidateProfileRepository;
         this.aiService = aiService;
     }
@@ -105,6 +110,13 @@ public class CandidateJobController {
         application.setStatus("APPLIED");
 
         JobApplication saved = jobApplicationRepository.save(application);
+
+        JobApplicationStatusHistory historyEntry = new JobApplicationStatusHistory();
+        historyEntry.setJobApplication(saved);
+        historyEntry.setStatus(saved.getStatus());
+        historyEntry.setChangedAt(saved.getAppliedAt());
+        jobApplicationStatusHistoryRepository.save(historyEntry);
+
         return ResponseEntity.status(201).body(JobApplicationDto.fromEntity(saved));
     }
 
