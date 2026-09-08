@@ -63,4 +63,20 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, UUID> {
         @Param("skillsText") String skillsText,
         Pageable pageable
     );
+
+    @Query(value = """
+        SELECT j.* FROM job_postings j
+        WHERE j.status IN ('OPEN', 'ACTIVE')
+        AND j.salary_range IS NOT NULL
+        AND (
+            CAST(:keyword AS TEXT) IS NULL OR
+            j.title ILIKE '%' || CAST(:keyword AS TEXT) || '%'
+        )
+        AND (
+            CAST(:location AS TEXT) IS NULL OR
+            j.location ILIKE '%' || CAST(:location AS TEXT) || '%'
+        )
+        """,
+        nativeQuery = true)
+    java.util.List<JobPosting> findForSalaryBenchmark(@Param("keyword") String keyword, @Param("location") String location);
 }

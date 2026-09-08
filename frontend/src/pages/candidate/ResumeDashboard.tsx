@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../..
 import { Loader2 } from "lucide-react";
 import TailoringUI from "../../components/candidate/TailoringUI";
 import { TailoringHistoryList } from "../../components/candidate/TailoringHistoryList";
+import { GrowthPanel } from "../../components/candidate/GrowthPanel";
 
 export default function ResumeDashboard() {
   const [loading, setLoading] = useState(false);
@@ -117,6 +118,11 @@ export default function ResumeDashboard() {
       {scoreData && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
           <ScoreDisplay data={scoreData} resumeId={currentResumeId ?? undefined} />
+
+          <div className="mt-12 pt-8 border-t">
+            <h2 className="text-2xl font-bold tracking-tight mb-6">Grow</h2>
+            <GrowthPanel skills={scoreData.detectedSkills || []} />
+          </div>
 
           {currentResumeId && (
             <div className="mt-12 pt-8 border-t">

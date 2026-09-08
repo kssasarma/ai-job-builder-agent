@@ -2,14 +2,16 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-import { PlusCircle, Search, Loader2, Mail, ExternalLink, ChevronDown, ChevronUp, MapPin, Briefcase, Pencil, Trash2, Users, Download, ClipboardList } from "lucide-react";
+import { PlusCircle, Search, Loader2, Mail, ExternalLink, ChevronDown, ChevronUp, MapPin, Briefcase, Pencil, Trash2, Users, Download, ClipboardList, BarChart3 } from "lucide-react";
 import apiClient from "../../lib/axios";
 import { useOperationStatus, type OperationStatusMessage } from "../../lib/websocket";
 import { toast } from "sonner";
 import { JobCreateModal } from "../../components/recruiter/JobCreateModal";
 import { ExplainabilityPanel } from "../../components/shared/ExplainabilityPanel";
+import { RateButton } from "../../components/shared/RateButton";
 
 const APPLICATION_STATUSES = [
   { value: "APPLIED", label: "Applied", color: "bg-blue-500/10 text-blue-700" },
@@ -34,8 +36,16 @@ export default function RecruiterDashboard() {
 
   const [applicants, setApplicants] = useState<any[]>([]);
   const [applicantsLoading, setApplicantsLoading] = useState(false);
+  const [referrals, setReferrals] = useState<any[]>([]);
   const [interviewKits, setInterviewKits] = useState<Record<string, any>>({});
   const [interviewKitLoading, setInterviewKitLoading] = useState<Record<string, boolean>>({});
+  const [analytics, setAnalytics] = useState<any | null>(null);
+  const [fairness, setFairness] = useState<any | null>(null);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [comments, setComments] = useState<Record<string, any[]>>({});
+  const [commentsOpen, setCommentsOpen] = useState<Record<string, boolean>>({});
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [commentSubmitting, setCommentSubmitting] = useState<Record<string, boolean>>({});
 
   const fetchJobs = async () => {
     try {
@@ -62,6 +72,15 @@ export default function RecruiterDashboard() {
     }
   };
 
+  const fetchReferrals = async (jobId: string) => {
+    try {
+      const res = await apiClient.get(`/recruiter/jobs/${jobId}/referrals`);
+      setReferrals(res.data || []);
+    } catch {
+      setReferrals([]);
+    }
+  };
+
   useEffect(() => {
     fetchJobs();
   }, []);
@@ -72,7 +91,32 @@ export default function RecruiterDashboard() {
     setMatches([]);
     setMatchingStatus(null);
     setApplicants([]);
+    setAnalytics(null);
+    setFairness(null);
+    setShowAnalytics(false);
+    setReferrals([]);
     fetchApplicants(job.id);
+    fetchReferrals(job.id);
+  };
+
+  const toggleAnalytics = async (jobId: string) => {
+    if (showAnalytics) {
+      setShowAnalytics(false);
+      return;
+    }
+    setShowAnalytics(true);
+    if (!analytics) {
+      try {
+        const [analyticsRes, fairnessRes] = await Promise.all([
+          apiClient.get(`/recruiter/jobs/${jobId}/analytics`),
+          apiClient.get(`/recruiter/jobs/${jobId}/fairness`),
+        ]);
+        setAnalytics(analyticsRes.data);
+        setFairness(fairnessRes.data);
+      } catch {
+        toast.error("Failed to load analytics.");
+      }
+    }
   };
 
   const handleMatchCandidates = async (jobId: string) => {
@@ -109,6 +153,34 @@ export default function RecruiterDashboard() {
   }, [selectedJob]);
 
   useOperationStatus(matchingStatus === "PROCESSING" ? selectedJob?.id ?? null : null, handleMatchingStatus);
+
+  const toggleComments = async (matchId: string) => {
+    const next = !commentsOpen[matchId];
+    setCommentsOpen(prev => ({ ...prev, [matchId]: next }));
+    if (next && !comments[matchId]) {
+      try {
+        const res = await apiClient.get(`/recruiter/matches/${matchId}/comments`);
+        setComments(prev => ({ ...prev, [matchId]: res.data }));
+      } catch {
+        toast.error("Failed to load comments.");
+      }
+    }
+  };
+
+  const submitComment = async (matchId: string) => {
+    const body = commentDrafts[matchId];
+    if (!body?.trim()) return;
+    setCommentSubmitting(prev => ({ ...prev, [matchId]: true }));
+    try {
+      const res = await apiClient.post(`/recruiter/matches/${matchId}/comments`, { body });
+      setComments(prev => ({ ...prev, [matchId]: [...(prev[matchId] || []), res.data] }));
+      setCommentDrafts(prev => ({ ...prev, [matchId]: "" }));
+    } catch {
+      toast.error("Failed to post comment.");
+    } finally {
+      setCommentSubmitting(prev => ({ ...prev, [matchId]: false }));
+    }
+  };
 
   const generateInterviewKit = async (matchId: string) => {
     setInterviewKitLoading(prev => ({ ...prev, [matchId]: true }));
@@ -438,6 +510,9 @@ export default function RecruiterDashboard() {
                                   ))}
                                 </SelectContent>
                               </Select>
+                              {(app.status === "SELECTED" || app.status === "REJECTED") && (
+                                <RateButton endpoint="/recruiter/ratings" jobApplicationId={app.id} label="Rate candidate" />
+                              )}
                             </div>
                           </div>
                         );
@@ -445,6 +520,95 @@ export default function RecruiterDashboard() {
                     </div>
                   )}
                 </CardContent>
+              </Card>
+
+              {/* Trust-Weighted Referrals */}
+              {referrals.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Referrals ({referrals.length})</CardTitle>
+                    <CardDescription>Candidates who referred someone from their network into this role.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {referrals.map(r => (
+                      <div key={r.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-muted/20">
+                        <div>
+                          <p className="font-medium text-sm">{r.referredName} <span className="text-xs text-muted-foreground font-normal">({r.referredEmail})</span></p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Referred by {r.referrerName || "a candidate"}
+                            {r.referrerTrustScore != null && ` · ${r.referrerTrustScore.toFixed(0)}% of past referrals hired`}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="text-xs shrink-0">{r.status}</Badge>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Funnel & Time-to-Hire Analytics */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <button className="flex items-center justify-between w-full" onClick={() => toggleAnalytics(selectedJob.id)}>
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                      <CardTitle className="text-base">Funnel &amp; Time-to-Hire</CardTitle>
+                    </div>
+                    {showAnalytics ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                </CardHeader>
+                {showAnalytics && (
+                  <CardContent className="space-y-4">
+                    {!analytics ? (
+                      <div className="flex justify-center p-4"><Loader2 className="animate-spin h-5 w-5 text-primary" /></div>
+                    ) : analytics.totalApplicants === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-2">No applicants yet.</p>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                          {Object.entries(analytics.countsByStatus).map(([status, count]) => (
+                            <div key={status} className="rounded-lg border p-3 text-center">
+                              <p className="text-2xl font-bold tabular-nums">{count as number}</p>
+                              <p className="text-xs text-muted-foreground mt-1">{status}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex flex-wrap gap-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Conversion rate: </span>
+                            <span className="font-semibold">{analytics.conversionRatePercent != null ? analytics.conversionRatePercent.toFixed(1) + "%" : "—"}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Avg. time-to-hire: </span>
+                            <span className="font-semibold">{analytics.avgTimeToHireDays != null ? analytics.avgTimeToHireDays.toFixed(1) + " days" : "No hires yet"}</span>
+                          </div>
+                        </div>
+                        {analytics.avgDaysInStage.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold uppercase text-muted-foreground mb-2">Avg. days in each stage before moving on</p>
+                            <div className="space-y-1.5">
+                              {analytics.avgDaysInStage.map((s: any) => (
+                                <div key={s.status} className="flex items-center justify-between text-sm">
+                                  <span>{s.status}</span>
+                                  <span className="text-muted-foreground">{s.avgDays.toFixed(1)} days (n={s.sampleSize})</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {fairness && fairness.sampleSize > 0 && (
+                          <div className={`rounded-lg border p-3 text-sm ${fairness.lowDifferentiation ? "border-amber-400/50 bg-amber-500/5" : "border-border"}`}>
+                            <p className="font-semibold mb-1">Score fairness &amp; spread</p>
+                            <p className="text-muted-foreground">
+                              Scores range {fairness.minScore}–{fairness.maxScore} (median {fairness.medianScore}, std dev {fairness.stdDeviation?.toFixed(1)})
+                            </p>
+                            <p className={`mt-1 ${fairness.lowDifferentiation ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}>{fairness.note}</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </CardContent>
+                )}
               </Card>
 
               {matchingStatus === "PROCESSING" && (
@@ -548,6 +712,41 @@ export default function RecruiterDashboard() {
                                       <p className="text-xs text-muted-foreground italic">What good looks like: {q.whatGoodLooksLike}</p>
                                     </div>
                                   ))}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="mt-4 pt-4 border-t">
+                              <button
+                                className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                                onClick={() => toggleComments(match.id)}
+                              >
+                                <Users className="h-3.5 w-3.5" />
+                                Hiring room {comments[match.id] ? `(${comments[match.id].length})` : ""}
+                                {commentsOpen[match.id] ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                              </button>
+                              {commentsOpen[match.id] && (
+                                <div className="mt-3 space-y-3">
+                                  {(comments[match.id] || []).map((c: any) => (
+                                    <div key={c.id} className="bg-muted/40 rounded-md p-3 text-sm">
+                                      <div className="flex justify-between items-baseline">
+                                        <span className="font-medium">{c.authorName}</span>
+                                        <span className="text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleString()}</span>
+                                      </div>
+                                      <p className="mt-1 text-muted-foreground">{c.body}</p>
+                                    </div>
+                                  ))}
+                                  <div className="flex gap-2">
+                                    <Input
+                                      value={commentDrafts[match.id] || ""}
+                                      onChange={e => setCommentDrafts(prev => ({ ...prev, [match.id]: e.target.value }))}
+                                      placeholder="Leave feedback for the hiring team..."
+                                      onKeyDown={e => { if (e.key === "Enter") submitComment(match.id); }}
+                                    />
+                                    <Button size="sm" onClick={() => submitComment(match.id)} disabled={commentSubmitting[match.id]}>
+                                      {commentSubmitting[match.id] ? <Loader2 className="h-4 w-4 animate-spin" /> : "Post"}
+                                    </Button>
+                                  </div>
                                 </div>
                               )}
                             </div>

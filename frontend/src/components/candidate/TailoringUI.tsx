@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
-import { Loader2, AlertTriangle, XCircle, CheckCircle, RefreshCcw, MessageCircleQuestion } from "lucide-react";
+import { Loader2, AlertTriangle, XCircle, CheckCircle, RefreshCcw, MessageCircleQuestion, GraduationCap } from "lucide-react";
 import apiClient from "../../lib/axios";
 import { toast } from "sonner";
 import { ExplainabilityPanel } from "../shared/ExplainabilityPanel";
@@ -20,6 +20,18 @@ export default function TailoringUI({ resumeId }: TailoringUIProps) {
   const [gapAnalysis, setGapAnalysis] = useState<any>(null);
   const [tailoringResult, setTailoringResult] = useState<any>(null);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [learnedSkills, setLearnedSkills] = useState<Set<string>>(new Set());
+
+  const markSkillLearned = async (skill: string) => {
+    if (!analysis) return;
+    try {
+      await apiClient.post(`/candidate/tailoring/${analysis.historyId}/learning-progress`, { skill });
+      setLearnedSkills(prev => new Set(prev).add(skill));
+      toast.success(`Marked "${skill}" as learned.`);
+    } catch {
+      toast.error("Couldn't save that.");
+    }
+  };
 
   const handleAnalyze = async () => {
     if (!jobDescription.trim()) return toast.error("Please enter a job description");
@@ -160,6 +172,15 @@ export default function TailoringUI({ resumeId }: TailoringUIProps) {
                               {item.projectIdeas.map((p: string, i: number) => <li key={i}>{p}</li>)}
                             </ul>
                           </div>
+                          {learnedSkills.has(item.skill) ? (
+                            <Badge className="bg-green-500/10 text-green-700 hover:bg-green-500/20 border-green-500/30">
+                              <GraduationCap className="mr-1.5 h-3 w-3" /> Learned
+                            </Badge>
+                          ) : (
+                            <Button size="sm" variant="outline" onClick={() => markSkillLearned(item.skill)}>
+                              <GraduationCap className="mr-1.5 h-3.5 w-3.5" /> Mark as learned
+                            </Button>
+                          )}
                         </CardContent>
                       </Card>
                     ))}

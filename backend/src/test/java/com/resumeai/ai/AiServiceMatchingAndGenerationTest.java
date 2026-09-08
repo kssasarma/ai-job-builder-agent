@@ -67,6 +67,7 @@ class AiServiceMatchingAndGenerationTest {
     @Mock private MockInterviewSessionRepository mockInterviewSessionRepository;
     @Mock private MockInterviewQuestionRepository mockInterviewQuestionRepository;
     @Mock private SimpMessagingTemplate messagingTemplate;
+    @Mock private com.resumeai.candidate.SkillChallengeRepository skillChallengeRepository;
 
     @Mock private ChatClient.ChatClientRequestSpec requestSpec;
     @Mock private ChatClient.CallResponseSpec callResponseSpec;
@@ -82,7 +83,7 @@ class AiServiceMatchingAndGenerationTest {
                 tailoringHistoryRepository, jobPostingRepository, candidateProfileRepository,
                 candidateMatchRepository, profileSuggestionRepository, asyncOperationRepository,
                 embeddingService, aiDecisionLogRepository, interviewKitRepository,
-                mockInterviewRepositories, messagingTemplate
+                mockInterviewRepositories, messagingTemplate, skillChallengeRepository
         );
         aiService.setSelf(aiService);
     }

@@ -59,7 +59,8 @@ public class AiServiceProfileExtractionTest {
                 mock(AiDecisionLogRepository.class),
                 mock(com.resumeai.recruiter.InterviewKitRepository.class),
                 mock(MockInterviewRepositories.class),
-                mock(org.springframework.messaging.simp.SimpMessagingTemplate.class)
+                mock(org.springframework.messaging.simp.SimpMessagingTemplate.class),
+                mock(com.resumeai.candidate.SkillChallengeRepository.class)
         );
         aiService.setSelf(aiService);
     }

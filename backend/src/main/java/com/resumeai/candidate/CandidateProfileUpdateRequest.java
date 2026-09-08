@@ -7,6 +7,8 @@ public record CandidateProfileUpdateRequest(
         String linkedinUrl,
         String preferredContactEmail,
         Boolean openToOpportunities,
-        List<String> skills
+        List<String> skills,
+        Boolean aiConsent,
+        Boolean anonymizedDiscovery
 ) {
 }

@@ -101,9 +101,22 @@ docker-compose up -d
 - `POST /api/candidate/mock-interview/questions/{id}/answer` - Submit a practice answer and get AI-scored feedback
 - `GET /api/ai/decisions/{decisionType}/{referenceId}` - The AI decision ledger behind one score/match/generated document ("why this result?")
 - `POST /api/ai/review-requests` - Flag an AI result for human review
+- `GET /api/recruiter/jobs/{id}/analytics` - Funnel & time-to-hire analytics
+- `GET /api/recruiter/jobs/{id}/fairness` - Score-distribution/differentiation check for a job's matches
+- `GET/POST /api/recruiter/matches/{id}/comments` - Collaborative hiring room (threaded feedback) on one match
+- `POST /api/candidate/skill-challenges`, `POST /{id}/answer` - Proof-of-skill micro-credential challenges
+- `GET /api/candidate/trajectory` - Career trajectory simulator (projected score uplift from closing the top gap)
+- `GET /api/candidate/market-reality` - Salary benchmark sourced from live postings
+- `POST /api/candidate/career-events` - Career record timeline entries
+- `POST /api/candidate/tailoring/{id}/learning-progress` - Mark a gap-analysis skill as learned
+- `POST /api/candidate/referrals` - Trust-weighted referrals into an open role
+- `POST /api/candidate/ratings`, `POST /api/recruiter/ratings` - Two-sided reputation
+- `PUT /api/candidate/profile` (`aiConsent`, `anonymizedDiscovery`) - Consent-based AI data use and anonymized-first discovery
+- `POST /api/recruiter/candidates/{id}/reveal-request`, `POST /api/candidate/reveal-requests/{id}/approve` - Anonymized-profile reveal flow
 
 ## Platform Strategy
-`docs/PLATFORM_STRATEGY.md` has the fuller picture: what's built, the roadmap this PR
-implements (P0/foundation), and what's next (P1/P2). Real-time status pushes over
-`/ws` (STOMP) have replaced polling for resume scoring, profile extraction, and
-candidate matching — see `WebSocketConfig` and `frontend/src/lib/websocket.ts`.
+`docs/PLATFORM_STRATEGY.md` has the fuller picture: every feature above organized by
+who it's for, plus the known scope limits (what's a deliberate v1 vs. a genuine gap).
+Real-time status pushes over `/ws` (STOMP) have replaced polling for resume scoring,
+profile extraction, and candidate matching — see `WebSocketConfig` and
+`frontend/src/lib/websocket.ts`.

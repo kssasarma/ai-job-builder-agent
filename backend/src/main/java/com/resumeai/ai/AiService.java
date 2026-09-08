@@ -79,6 +79,15 @@ public class AiService {
     @Value("classpath:/prompts/mock-interview-feedback.st")
     private Resource mockInterviewFeedbackPromptTemplate;
 
+    @Value("classpath:/prompts/skill-challenge-question.st")
+    private Resource skillChallengeQuestionPromptTemplate;
+
+    @Value("classpath:/prompts/skill-challenge-grade.st")
+    private Resource skillChallengeGradePromptTemplate;
+
+    @Value("classpath:/prompts/trajectory-simulator.st")
+    private Resource trajectorySimulatorPromptTemplate;
+
     private final com.resumeai.candidate.TailoringHistoryRepository tailoringHistoryRepository;
     private final com.resumeai.recruiter.JobPostingRepository jobPostingRepository;
     private final com.resumeai.candidate.CandidateProfileRepository candidateProfileRepository;
@@ -88,6 +97,7 @@ public class AiService {
     private final com.resumeai.recruiter.InterviewKitRepository interviewKitRepository;
     private final MockInterviewRepositories mockInterviewRepositories;
     private final SimpMessagingTemplate messagingTemplate;
+    private final com.resumeai.candidate.SkillChallengeRepository skillChallengeRepository;
     private AiService self;
 
     public AiService(ChatClient.Builder chatClientBuilder, ResumeRepository resumeRepository, ObjectMapper objectMapper,
@@ -101,7 +111,8 @@ public class AiService {
                      AiDecisionLogRepository aiDecisionLogRepository,
                      com.resumeai.recruiter.InterviewKitRepository interviewKitRepository,
                      MockInterviewRepositories mockInterviewRepositories,
-                     SimpMessagingTemplate messagingTemplate) {
+                     SimpMessagingTemplate messagingTemplate,
+                     com.resumeai.candidate.SkillChallengeRepository skillChallengeRepository) {
         this.chatClient = chatClientBuilder.build();
         this.resumeRepository = resumeRepository;
         this.objectMapper = objectMapper;
@@ -116,6 +127,7 @@ public class AiService {
         this.interviewKitRepository = interviewKitRepository;
         this.mockInterviewRepositories = mockInterviewRepositories;
         this.messagingTemplate = messagingTemplate;
+        this.skillChallengeRepository = skillChallengeRepository;
     }
 
     /** Records one row in the AI decision ledger — the data behind the explainability panel. */
@@ -133,6 +145,14 @@ public class AiService {
 
     private OpenAiChatOptions fastModelOptions() {
         return OpenAiChatOptions.builder().model(fastModel).build();
+    }
+
+    /** Consent-based data use: a candidate can opt a resume's AI flows off entirely. */
+    private void requireAiConsent(Resume resume) {
+        com.resumeai.candidate.CandidateProfile candidate = resume.getCandidate();
+        if (candidate != null && Boolean.FALSE.equals(candidate.getAiConsent())) {
+            throw new IllegalStateException("AI consent has not been granted for this candidate profile");
+        }
     }
 
     private void updateStatus(UUID referenceId, String type, String status, String errorMessage) {
@@ -181,6 +201,7 @@ public class AiService {
     public void doExtractProfileWithRetry(UUID resumeId) throws Exception {
         Resume resume = resumeRepository.findById(resumeId)
                 .orElseThrow(() -> new IllegalArgumentException("Resume not found"));
+        requireAiConsent(resume);
 
         if (resume.getExtractedText() == null || resume.getExtractedText().isBlank()) {
             throw new IllegalStateException("Resume has no extracted text to analyze");
@@ -242,6 +263,7 @@ public class AiService {
     public void doScoreResumeWithRetry(UUID resumeId) throws Exception {
         Resume resume = resumeRepository.findById(resumeId)
                 .orElseThrow(() -> new IllegalArgumentException("Resume not found"));
+        requireAiConsent(resume);
 
         if (resume.getExtractedText() == null || resume.getExtractedText().isBlank()) {
             throw new IllegalStateException("Resume has no extracted text to analyze");
@@ -326,6 +348,7 @@ public class AiService {
     public com.resumeai.candidate.CompatibilityResponse analyzeCompatibility(UUID resumeId, String jobDescription) {
         Resume resume = resumeRepository.findById(resumeId)
                 .orElseThrow(() -> new IllegalArgumentException("Resume not found"));
+        requireAiConsent(resume);
 
         if (resume.getExtractedText() == null || resume.getExtractedText().isBlank()) {
             throw new IllegalStateException("Resume has no extracted text to analyze");
@@ -426,6 +449,8 @@ public class AiService {
         java.util.List<com.resumeai.candidate.CandidateProfile> candidates = selectCandidatesForMatching(job);
 
         for (com.resumeai.candidate.CandidateProfile candidate : candidates) {
+            if (Boolean.FALSE.equals(candidate.getAiConsent())) continue;
+
             java.util.Optional<Resume> optResume = resumeRepository.findFirstByCandidateIdAndIsPrimaryTrue(candidate.getId());
             if (optResume.isEmpty() || optResume.get().getExtractedText() == null) continue;
 
@@ -560,6 +585,7 @@ public class AiService {
         }
 
         Resume resume = history.getResume();
+        requireAiConsent(resume);
 
         try {
             com.resumeai.candidate.TailoredResumeResponse response = chatClient.prompt()
@@ -719,5 +745,123 @@ public class AiService {
         return mockInterviewRepositories.questionRepository().findBySessionIdOrderByDisplayOrderAsc(sessionId).stream()
                 .map(com.resumeai.candidate.MockInterviewQuestionDto::fromEntity)
                 .toList();
+    }
+
+    @Transactional
+    public com.resumeai.candidate.SkillChallengeDto generateSkillChallenge(UUID candidateId, String skill) {
+        com.resumeai.candidate.CandidateProfile candidate = candidateProfileRepository.findById(candidateId)
+                .orElseThrow(() -> new IllegalArgumentException("Candidate profile not found"));
+
+        try {
+            com.resumeai.candidate.SkillChallengeQuestionResponse generated = chatClient.prompt()
+                    .system(s -> s.text(skillChallengeQuestionPromptTemplate))
+                    .user(u -> u.text("SKILL TO VERIFY:\n" + skill))
+                    .options(fastModelOptions())
+                    .call()
+                    .entity(com.resumeai.candidate.SkillChallengeQuestionResponse.class);
+
+            com.resumeai.candidate.SkillChallenge challenge = new com.resumeai.candidate.SkillChallenge();
+            challenge.setCandidate(candidate);
+            challenge.setSkill(skill);
+            challenge.setQuestion(generated.question());
+            challenge.setIdealAnswerPoints(objectMapper.writeValueAsString(generated.idealAnswerPoints()));
+            com.resumeai.candidate.SkillChallenge saved = skillChallengeRepository.save(challenge);
+
+            logDecision("SKILL_CHALLENGE", saved.getId(), fastModel, "skill-challenge-question@v1",
+                    "Challenge question generated to verify \"" + skill + "\".",
+                    candidate.getUser() != null ? candidate.getUser().getId() : null);
+
+            return com.resumeai.candidate.SkillChallengeDto.fromEntity(saved, null);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate skill challenge", e);
+        }
+    }
+
+    @Transactional
+    public com.resumeai.candidate.SkillChallengeDto submitSkillChallengeAnswer(UUID challengeId, String answer) {
+        com.resumeai.candidate.SkillChallenge challenge = skillChallengeRepository.findById(challengeId)
+                .orElseThrow(() -> new IllegalArgumentException("Skill challenge not found"));
+
+        try {
+            java.util.List<String> idealPoints = objectMapper.readValue(challenge.getIdealAnswerPoints(),
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
+
+            com.resumeai.candidate.SkillChallengeGradeResponse grade = chatClient.prompt()
+                    .system(s -> s.text(skillChallengeGradePromptTemplate))
+                    .user(u -> u.text("SKILL BEING VERIFIED:\n" + challenge.getSkill() + "\n\nQUESTION ASKED:\n" + challenge.getQuestion()
+                            + "\n\nWHAT A PROFICIENT ANSWER COVERS:\n" + String.join("; ", idealPoints)
+                            + "\n\nCANDIDATE'S ANSWER:\n" + answer))
+                    .options(fastModelOptions())
+                    .call()
+                    .entity(com.resumeai.candidate.SkillChallengeGradeResponse.class);
+
+            boolean passed = grade.score() >= com.resumeai.candidate.SkillChallenge.PASSING_SCORE;
+            challenge.setAnswer(answer);
+            challenge.setScore(grade.score());
+            challenge.setPassed(passed);
+            com.resumeai.candidate.SkillChallenge saved = skillChallengeRepository.save(challenge);
+
+            com.resumeai.candidate.CandidateProfile candidate = challenge.getCandidate();
+            if (passed) {
+                java.util.List<String> verified = candidate.getVerifiedSkills() != null
+                        ? new java.util.ArrayList<>(candidate.getVerifiedSkills())
+                        : new java.util.ArrayList<>();
+                if (!verified.contains(challenge.getSkill())) {
+                    verified.add(challenge.getSkill());
+                    candidate.setVerifiedSkills(verified);
+                    candidateProfileRepository.save(candidate);
+                }
+            }
+
+            logDecision("SKILL_CHALLENGE", saved.getId(), fastModel, "skill-challenge-grade@v1",
+                    "Answer scored " + grade.score() + "/100 on \"" + challenge.getSkill() + "\" — " + (passed ? "passed" : "not passed") + ".",
+                    candidate.getUser() != null ? candidate.getUser().getId() : null);
+
+            return com.resumeai.candidate.SkillChallengeDto.fromEntity(saved, grade.feedback());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to grade skill challenge answer", e);
+        }
+    }
+
+    public com.resumeai.candidate.TrajectorySimulationResponse generateTrajectorySimulation(UUID candidateId) {
+        java.util.List<com.resumeai.candidate.TailoringHistory> history =
+                tailoringHistoryRepository.findByResumeCandidateIdOrderByCreatedAtDesc(candidateId).stream()
+                        .filter(h -> h.getCompatibilityAnalysis() != null)
+                        .toList();
+
+        if (history.size() < 2) {
+            throw new IllegalStateException("Run at least 2 compatibility checks before requesting a trajectory simulation");
+        }
+
+        StringBuilder historyLines = new StringBuilder();
+        for (com.resumeai.candidate.TailoringHistory h : history) {
+            try {
+                com.resumeai.candidate.CompatibilityAnalysisDto analysis = objectMapper.readValue(
+                        h.getCompatibilityAnalysis(), com.resumeai.candidate.CompatibilityAnalysisDto.class);
+                historyLines.append("- Score ").append(analysis.matchScore())
+                        .append(", missing skills: ").append(String.join(", ", analysis.missingCriticalSkills()))
+                        .append("\n");
+            } catch (Exception ignored) {
+                // Skip malformed/legacy rows rather than failing the whole simulation.
+            }
+        }
+
+        try {
+            com.resumeai.candidate.TrajectorySimulationResponse response = chatClient.prompt()
+                    .system(s -> s.text(trajectorySimulatorPromptTemplate))
+                    .user(u -> u.text("HISTORY OF COMPATIBILITY CHECKS:\n" + historyLines))
+                    .options(fastModelOptions())
+                    .call()
+                    .entity(com.resumeai.candidate.TrajectorySimulationResponse.class);
+
+            logDecision("TRAJECTORY_SIMULATION", candidateId, fastModel, "trajectory-simulator@v1",
+                    "Projected " + response.currentAverageScore() + " -> " + response.projectedAverageScore()
+                            + " by closing \"" + response.topGapSkill() + "\".",
+                    null);
+
+            return response;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate trajectory simulation", e);
+        }
     }
 }

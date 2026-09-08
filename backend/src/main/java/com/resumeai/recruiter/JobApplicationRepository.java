@@ -12,4 +12,5 @@ public interface JobApplicationRepository extends JpaRepository<JobApplication, 
     Page<JobApplication> findByJobPostingIdOrderByAppliedAtDesc(UUID jobPostingId, Pageable pageable);
     Optional<JobApplication> findByCandidateIdAndJobPostingId(UUID candidateId, UUID jobPostingId);
     List<JobApplication> findByCandidateId(UUID candidateId);
+    List<JobApplication> findByJobPostingId(UUID jobPostingId);
 }

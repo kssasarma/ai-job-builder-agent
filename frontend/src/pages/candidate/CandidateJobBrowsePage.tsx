@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { Mail, MapPin, Briefcase, Loader2, Search, CheckCircle2, Zap } from "lucide-react";
+import { Mail, MapPin, Briefcase, Loader2, Search, CheckCircle2, Zap, DollarSign, UserPlus } from "lucide-react";
 
 interface CompatibilityResult {
   compatibilityScore: number;
@@ -34,6 +34,15 @@ export default function CandidateJobBrowsePage() {
 
   const [compatibilityResults, setCompatibilityResults] = useState<Record<string, CompatibilityResult>>({});
   const [compatibilityLoading, setCompatibilityLoading] = useState<Set<string>>(new Set());
+
+  const [marketReality, setMarketReality] = useState<Record<string, any>>({});
+  const [marketRealityLoading, setMarketRealityLoading] = useState<Set<string>>(new Set());
+
+  const [referralFormJobId, setReferralFormJobId] = useState<string | null>(null);
+  const [referralName, setReferralName] = useState("");
+  const [referralEmail, setReferralEmail] = useState("");
+  const [referredJobIds, setReferredJobIds] = useState<Set<string>>(new Set());
+  const [referring, setReferring] = useState(false);
 
   const toggleSkills = (jobId: string) => {
     setExpandedSkills(prev => {
@@ -128,6 +137,42 @@ export default function CandidateJobBrowsePage() {
         next.delete(jobId);
         return next;
       });
+    }
+  };
+
+  const checkMarketReality = async (job: any) => {
+    setMarketRealityLoading(prev => new Set(prev).add(job.id));
+    try {
+      const params = new URLSearchParams();
+      if (job.title) params.set("title", job.title);
+      if (job.location) params.set("location", job.location);
+      const res = await apiClient.get(`/candidate/market-reality?${params.toString()}`);
+      setMarketReality(prev => ({ ...prev, [job.id]: res.data }));
+    } catch {
+      toast.error("Couldn't load market data.");
+    } finally {
+      setMarketRealityLoading(prev => {
+        const next = new Set(prev);
+        next.delete(job.id);
+        return next;
+      });
+    }
+  };
+
+  const submitReferral = async (jobId: string) => {
+    if (!referralName.trim() || !referralEmail.trim()) return toast.error("Name and email are required");
+    setReferring(true);
+    try {
+      await apiClient.post("/candidate/referrals", { jobPostingId: jobId, referredName: referralName, referredEmail: referralEmail });
+      setReferredJobIds(prev => new Set(prev).add(jobId));
+      setReferralFormJobId(null);
+      setReferralName("");
+      setReferralEmail("");
+      toast.success("Referral sent!");
+    } catch {
+      toast.error("Couldn't submit that referral.");
+    } finally {
+      setReferring(false);
     }
   };
 
@@ -239,7 +284,26 @@ export default function CandidateJobBrowsePage() {
                         {job.experienceMin ?? 0}–{job.experienceMax ?? "+"} yrs exp
                       </span>
                     )}
+                    <button
+                      onClick={() => checkMarketReality(job)}
+                      disabled={marketRealityLoading.has(job.id)}
+                      className="flex items-center gap-1 text-primary hover:underline"
+                    >
+                      <DollarSign className="h-3 w-3" />
+                      {marketRealityLoading.has(job.id) ? "Checking market..." : "Market reality check"}
+                    </button>
                   </div>
+
+                  {marketReality[job.id] && (
+                    marketReality[job.id].sampleSize > 0 ? (
+                      <p className="text-xs text-muted-foreground -mt-2">
+                        Similar open roles{marketReality[job.id].location ? ` in ${marketReality[job.id].location}` : ""}: ${marketReality[job.id].minSalary?.toLocaleString()} – ${marketReality[job.id].maxSalary?.toLocaleString()}
+                        {" "}(median ${marketReality[job.id].medianSalary?.toLocaleString()}, n={marketReality[job.id].sampleSize})
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground -mt-2">Not enough similar postings with salary data yet.</p>
+                    )
+                  )}
 
                   {/* Description */}
                   {job.description && (
@@ -350,8 +414,28 @@ export default function CandidateJobBrowsePage() {
                           </a>
                         </Button>
                       )}
+                      {referredJobIds.has(job.id) ? (
+                        <Button size="sm" variant="secondary" disabled>
+                          <CheckCircle2 className="mr-2 h-3 w-3" />Referred
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={() => setReferralFormJobId(referralFormJobId === job.id ? null : job.id)}>
+                          <UserPlus className="mr-2 h-3.5 w-3.5" /> Refer someone
+                        </Button>
+                      )}
                     </div>
                   </div>
+
+                  {referralFormJobId === job.id && (
+                    <div className="p-3 border rounded-md bg-muted/20 space-y-2">
+                      <Input placeholder="Their name" value={referralName} onChange={e => setReferralName(e.target.value)} />
+                      <Input type="email" placeholder="Their email" value={referralEmail} onChange={e => setReferralEmail(e.target.value)} />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => submitReferral(job.id)} disabled={referring}>Submit referral</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setReferralFormJobId(null)}>Cancel</Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );

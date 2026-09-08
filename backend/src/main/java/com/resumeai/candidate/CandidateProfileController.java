@@ -75,6 +75,8 @@ public class CandidateProfileController {
         if (request.preferredContactEmail() != null) profile.setPreferredContactEmail(request.preferredContactEmail());
         if (request.openToOpportunities() != null) profile.setOpenToOpportunities(request.openToOpportunities());
         if (request.skills() != null) profile.setSkills(request.skills());
+        if (request.aiConsent() != null) profile.setAiConsent(request.aiConsent());
+        if (request.anonymizedDiscovery() != null) profile.setAnonymizedDiscovery(request.anonymizedDiscovery());
 
         return ResponseEntity.ok(CandidateProfileDto.fromEntity(candidateProfileRepository.save(profile)));
     }

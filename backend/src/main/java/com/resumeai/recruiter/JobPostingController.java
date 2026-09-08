@@ -23,14 +23,25 @@ public class JobPostingController {
     private final com.resumeai.ai.EmbeddingService embeddingService;
     private final CandidateMatchRepository candidateMatchRepository;
     private final JobApplicationRepository jobApplicationRepository;
+    private final JobApplicationStatusHistoryRepository jobApplicationStatusHistoryRepository;
+    private final JobFunnelAnalyticsService jobFunnelAnalyticsService;
+    private final FairnessAnalyticsService fairnessAnalyticsService;
 
-    public JobPostingController(JobPostingRepository jobPostingRepository, RecruiterProfileRepository recruiterProfileRepository, com.resumeai.ai.AiService aiService, com.resumeai.ai.EmbeddingService embeddingService, CandidateMatchRepository candidateMatchRepository, JobApplicationRepository jobApplicationRepository) {
+    public JobPostingController(JobPostingRepository jobPostingRepository, RecruiterProfileRepository recruiterProfileRepository,
+                                 com.resumeai.ai.AiService aiService, com.resumeai.ai.EmbeddingService embeddingService,
+                                 CandidateMatchRepository candidateMatchRepository, JobApplicationRepository jobApplicationRepository,
+                                 JobApplicationStatusHistoryRepository jobApplicationStatusHistoryRepository,
+                                 JobFunnelAnalyticsService jobFunnelAnalyticsService,
+                                 FairnessAnalyticsService fairnessAnalyticsService) {
         this.jobPostingRepository = jobPostingRepository;
         this.recruiterProfileRepository = recruiterProfileRepository;
         this.aiService = aiService;
         this.embeddingService = embeddingService;
         this.candidateMatchRepository = candidateMatchRepository;
         this.jobApplicationRepository = jobApplicationRepository;
+        this.jobApplicationStatusHistoryRepository = jobApplicationStatusHistoryRepository;
+        this.jobFunnelAnalyticsService = jobFunnelAnalyticsService;
+        this.fairnessAnalyticsService = fairnessAnalyticsService;
     }
 
     private void embedJobPostingAsync(JobPosting job) {
@@ -208,7 +219,38 @@ public class JobPostingController {
 
         application.setStatus(statusUpdate.status());
         JobApplication saved = jobApplicationRepository.save(application);
+
+        JobApplicationStatusHistory historyEntry = new JobApplicationStatusHistory();
+        historyEntry.setJobApplication(saved);
+        historyEntry.setStatus(saved.getStatus());
+        historyEntry.setChangedAt(saved.getUpdatedAt());
+        jobApplicationStatusHistoryRepository.save(historyEntry);
+
         return ResponseEntity.ok(JobApplicationDto.fromEntity(saved));
+    }
+
+    @GetMapping("/{id}/analytics")
+    public ResponseEntity<?> getFunnelAnalytics(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        RecruiterProfile recruiter = getRecruiterProfile(userDetails.getUser().getId());
+        JobPosting job = jobPostingRepository.findById(id).orElseThrow();
+        if (!job.getRecruiter().getId().equals(recruiter.getId())) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(jobFunnelAnalyticsService.computeAnalytics(id));
+    }
+
+    @GetMapping("/{id}/fairness")
+    public ResponseEntity<?> getFairnessAnalytics(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        RecruiterProfile recruiter = getRecruiterProfile(userDetails.getUser().getId());
+        JobPosting job = jobPostingRepository.findById(id).orElseThrow();
+        if (!job.getRecruiter().getId().equals(recruiter.getId())) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(fairnessAnalyticsService.computeFairness(id));
     }
 
     private void updateJobFromRequest(JobPosting job, JobPostingRequest request) {
